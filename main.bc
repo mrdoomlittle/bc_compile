@@ -1,0 +1,13 @@
+w8 hello = 212;
+w8 h = 0;
+/*check if hello eq h*/
+:reloop;
+if hello # h {
+
+
+	print h;
+	inc h;
+
+
+	goto reloop;
+}
