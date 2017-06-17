@@ -1,0 +1,9 @@
+w8 var_1 = 21;
+/*
+	created by mrdoomlittle.
+	github: http://github.com/mrdoomlittle/
+	still in working progress.
+*/
+w8 var_2 = var_1;
+print var_2;
+exit
