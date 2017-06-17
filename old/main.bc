@@ -1,0 +1,7 @@
+w8 tick_count = 0;
+w8 max_count = 1;
+
+if tick_count # max_count {
+	print tick_count;
+}
+
