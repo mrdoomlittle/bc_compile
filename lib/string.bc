@@ -1,0 +1,5 @@
+u16_t strlen(u8_t *__str) {
+	u8_t *itr = __str;
+	while(*itr != '\0') {itr++;}
+	return itr-__str;
+}

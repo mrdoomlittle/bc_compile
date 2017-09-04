@@ -1,0 +1,7 @@
+u8_t stack[10];
+u8_t *s_itr = stack;
+u8_t* alloc(u8_t __bc) {
+	u8_t* ret = s_itr;
+	s_itr = s_itr + __bc;
+	return ret;
+}

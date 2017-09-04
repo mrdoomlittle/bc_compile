@@ -1,0 +1,41 @@
+struct __arg {u8_t pin_mode, pin_state, pid;};
+struct __arg arg;
+
+u8_t set_pin_mode(u8_t __pin_mode, u8_t __pid) {
+	arg.pin_mode = __pin_mode;
+	arg.pid = __pid;
+	extern_call(0, &arg);
+}
+
+u8_t set_pin_state(u8_t __pin_state, u8_t __pid) {
+	arg.pin_state = __pin_state;
+	arg.pid = __pid;
+	extern_call(1, &arg);
+}
+
+u8_t get_pin_state(u8_t __pid) {
+	arg.pid = __pid;
+	return extern_call(2, &arg);
+}
+
+void _delay_ms(u16_t __delay) {
+	extern_call(3, &__delay);
+}
+
+void tmp_send_byte(u8_t __byte) {
+	extern_call(4, &__byte);
+}
+
+u8_t tmp_recv_byte() {
+	u8_t byte = 0;
+	extern_call(5, &byte);
+	return byte;
+}
+
+u8_t tmp_par_arcv_sig() {
+	return extern_call(6, 0);
+}
+
+u8_t tmp_par_asnd_sig() {
+	return extern_call(7, 0);
+}

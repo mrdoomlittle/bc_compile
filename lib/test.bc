@@ -1,0 +1,6 @@
+struct __arg {u8_t pin_mode, pin_state, pid;};
+struct __arg arg;
+
+arg.pin_state = 1;
+arg.pid = 12;
+extern_call(1, &arg);

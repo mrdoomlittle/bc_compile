@@ -1,0 +1,8 @@
+typedef u8_t mdl_u8_t;
+typedef u16_t mdl_u16_t;
+typedef u32_t mdl_u32_t;
+
+// not implmented
+//typedef i8_t mdl_i8_t;
+//typedef i16_t mdl_i16_t;
+//typedef i32_t mdl_i32_t;

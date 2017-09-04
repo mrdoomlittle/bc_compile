@@ -1,0 +1,11 @@
+u8_t mem_cmp(u8_t *__a, u8_t *__b, u32_t __n) {
+	u8_t *itr = __a;
+	while(itr-__a != __n) {
+		if (*itr != *__b) {
+			return 0;
+		}
+		__b++;
+		itr++;
+	}
+	return 1;
+}
