@@ -19,7 +19,9 @@ mdl_u64_t map_get_part(mdl_u8_t const* __key, mdl_uint_t __bc) {
 mdl_u32_t map_hash(mdl_u8_t const *__key, mdl_uint_t __bc) {
 	mdl_u8_t const *itr = __key;
 	mdl_u32_t ret_val = 1;
+	// mdl_u32_t ret_val = 2<<(__bc>>2);
 	while(itr != __key+__bc) {
+		// ret_val = (((ret_val>>1)+1)*(ret_val<<2))+(*itr*(((itr-__key)+1)<<1));
 		ret_val = (((ret_val>>1)+1)*(ret_val>>1))+ret_val+((*itr*((itr-__key)+1))*(*itr>>1));
 		ret_val = ((ret_val+128)^128)*((ret_val>>1)+1);
 		itr++;
