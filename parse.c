@@ -733,10 +733,13 @@ void read_bca_stmt(struct node **__node) {
 void read_sizeof_stmt(struct node **__node) {
 	expect_token(TOK_KEYWORD, L_PAREN);
 
-	struct type *_type;
-	read_decl_spec(&_type, read_token(NULL, 1));
-	mdl_uint_t size = bcit_sizeof(_type->bcit);
-	ast_int_type(__node, _type, &size);
+	struct type *base_type, *_type;
+	read_decl_spec(&base_type, read_token(NULL, 1));
+	read_declarator(&_type, base_type, NULL, NULL);
+
+	struct type *t;
+	make_notype(&t, T_KIND_X16, 0);
+	ast_int_type(__node, t, &_type->size);
 
 	expect_token(TOK_KEYWORD, R_PAREN);
 	expect_token(TOK_KEYWORD, SEMICOLON);
@@ -1079,7 +1082,7 @@ void read_cast_expr(struct node **__node) {
 	if (is_keyword(tok, L_PAREN)) {
 		struct token *peek;
 		peek_token(&peek);
-		if (is_type(peek)) {
+		if (is_type(peek) || peek->id == K_STRUCT) {
 			struct type *_type = NULL;
 			read_cast_type(&_type);
 
