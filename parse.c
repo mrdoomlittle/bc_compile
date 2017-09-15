@@ -264,6 +264,11 @@ void ast_struct_ref(struct node **__node, struct node *__struct, struct type *__
 	add_child(*__node, __struct);
 }
 
+void ast_va_ptr(struct node **__node, struct node *__arg, struct type *__type) {
+	build_ast(__node, &(struct node){.kind=AST_VA_PTR, ._type=__type});
+	add_child(*__node, __arg);
+}
+
 void build_type(struct type **__type, struct type *__tmpl) {
 	struct type *_type = (struct type*)malloc(sizeof(struct type));
 	memset(_type, 0, sizeof(struct type));
@@ -730,7 +735,7 @@ void read_bca_stmt(struct node **__node) {
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
-void read_sizeof_stmt(struct node **__node) {
+void read_sizeof_operand(struct node **__node) {
 	expect_token(TOK_KEYWORD, L_PAREN);
 
 	struct type *base_type, *_type;
@@ -742,7 +747,20 @@ void read_sizeof_stmt(struct node **__node) {
 	ast_int_type(__node, t, &_type->size);
 
 	expect_token(TOK_KEYWORD, R_PAREN);
-	expect_token(TOK_KEYWORD, SEMICOLON);
+}
+
+void read_va_ptr_operand(struct node **__node) {
+	expect_token(TOK_KEYWORD, L_PAREN);
+
+	struct type *_type;
+	struct node *_node;
+	read_expr(&_node);
+
+	build_type(&_type, &(struct type){.bcit=_bcit_void, .kind=T_KIND_VOID, .size=0, .flags = 0});
+	make_ptr_type(&_type, _type);
+	ast_va_ptr(__node, _node, _type);
+
+	expect_token(TOK_KEYWORD, R_PAREN);
 }
 
 void read_stmt(struct node **__node) {
@@ -761,7 +779,6 @@ void read_stmt(struct node **__node) {
 			case K_TYPEDEF: read_typedef(); return;
 			case K_RETURN: read_return_stmt(__node); return;
 			case K_BCA: read_bca_stmt(__node); return;
-			case K_SIZEOF: read_sizeof_stmt(__node); return;
 		}
 	}
 /*
@@ -984,7 +1001,6 @@ void read_unary_addrof(struct node **__node) {
 
 	struct type *_type = NULL;
 	make_ptr_type(&_type, val->_type);
-	printf("-----------------------------------kkkkkkkkkkkk\n");
 	print_node(val);
 	ast_uop(AST_ADDROF, __node, _type, val);
 }
@@ -1002,6 +1018,8 @@ void read_unary_expr(struct node **__node) {
 
 	if (tok->kind == TOK_KEYWORD){
 		switch(tok->id) {
+			case K_SIZEOF: read_sizeof_operand(__node); return;
+			case K_VA_PTR: read_va_ptr_operand(__node); return;
 			case ASTERISK: read_unary_deref(__node); return;
 			case AMPERSAND: read_unary_addrof(__node); return;
 		}
@@ -1068,6 +1086,7 @@ void read_cast_type(struct type **__type) {
 
 mdl_u8_t is_type(struct token *__tok) {
 	switch(__tok->id) {
+		case K_VOID_T:
 		case K_X8_T: case K_X16_T:
 		case K_X32_T: case K_X64_T:
 			return 1;

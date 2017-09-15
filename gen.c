@@ -768,6 +768,18 @@ void emit_incr_or_decr(struct node *__node, mdl_u8_t __drefd) {
 	if (!__drefd) emit_save(__node->_type->bcit, get_child(__node, 0)->off);
 }
 
+void emit_va_ptr(struct node *__node) {
+	struct node *arg = get_child(__node, 0);
+	bci_addr_t *addr;
+	bci_emit_assign(get_rga_addr(_bcit_addr), (mdl_u8_t**)&addr, _bcit_addr, 0);
+	*addr = base_addr+arg->off;
+
+	if (arg->_type->kind == T_KIND_ARRAY)
+		*addr = *addr+(arg->_type->len*arg->_type->size);
+	else
+		*addr = *addr+arg->_type->size;
+}
+
 void emit_bca_print(struct bca_blk *__blk) {
 	bci_emit_print(__blk->bcit, __blk->addr);
 }
@@ -803,9 +815,9 @@ void emit_bca_eeb_put(struct bca_blk *__blk) {
 }
 
 void emit_bca_fld(struct bca_blk *__blk) {
-	mdl_u8_t *val;
-	bci_emit_assign(__blk->addr, &val, _bcit_addr, 0);
-	*(bci_addr_t*)val = base_addr+*(bci_addr_t*)__blk->p;
+	bci_addr_t *addr;
+	bci_emit_assign(__blk->addr, (mdl_u8_t**)&addr, _bcit_addr, 0);
+	*addr = base_addr+*(bci_addr_t*)__blk->p;
 }
 
 void emit_bca_fst(struct bca_blk *__blk) {
@@ -928,6 +940,9 @@ void emit_expr(struct node *__node) {
 		break;
 		case AST_BCA:
 			emit_bca(__node);
+		break;
+		case AST_VA_PTR:
+			emit_va_ptr(__node);
 		break;
 		default:
 			emit_binop(__node);
