@@ -712,9 +712,11 @@ void emit_deref(struct node *__node) {
 
 void emit_return(struct node *__node) {
 	struct node *ret_val = get_child(__node, 0);
+	stack_pop(_bcit_addr);
+	bci_emit_mov(_bcit_addr, get_rgb_addr(_bcit_addr), get_rga_addr(_bcit_addr), 0);
 	emit_expr(ret_val);
 
-	bci_emit_jmp(RG_RET_ADDR);
+	bci_emit_jmp(get_rgb_addr(_bcit_addr));
 }
 
 void emit_conv(struct node *__node) {
