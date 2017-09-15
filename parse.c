@@ -51,6 +51,26 @@ void bca_incr_or_decr(struct bca_blk *__blk, mdl_u8_t __kind, mdl_u8_t __bcit, b
 	*__blk = (struct bca_blk){.kind=__kind, .bcit=__bcit, .addr=__addr, .bc=__bc, .flags=__flags};
 }
 
+void bca_eeb_init(struct bca_blk *__blk, mdl_u8_t __eeb_c, mdl_u8_t __flags) {
+	*__blk = (struct bca_blk){.kind=BCA_EEB_INIT, .eeb_c=__eeb_c, .flags=__flags};
+}
+
+void bca_eeb_put(struct bca_blk *__blk, mdl_u8_t __eeb_id, bci_addr_t __b_addr, bci_addr_t __e_addr, mdl_u8_t __flags) {
+	*__blk = (struct bca_blk){.kind=BCA_EEB_PUT, .eeb_id=__eeb_id, .b_addr=__b_addr, .e_addr=__e_addr, .flags=__flags};
+}
+
+void bca_fld(struct bca_blk *__blk, bci_addr_t __addr, bci_addr_t *__addr_p) {
+	*__blk = (struct bca_blk){.kind=BCA_FLD, .addr=__addr, .p=(void*)__addr_p};
+}
+
+void bca_fst(struct bca_blk *__blk, mdl_u8_t __bcit, bci_addr_t *__addr_p, bci_addr_t __addr) {
+	*__blk = (struct bca_blk){.kind=BCA_FST, .bcit=__bcit, .p=(void*)__addr_p, .addr=__addr};
+}
+
+void bca_dr(struct bca_blk *__blk, mdl_u8_t __bcit, bci_addr_t __dst_addr, bci_addr_t __src_addr, mdl_u8_t __flags) {
+	*__blk = (struct bca_blk){.kind=BCA_DR, .bcit=__bcit, .dst_addr=__dst_addr, .src_addr=__src_addr, .flags=__flags};
+}
+
 void bca_env_add_var_int(char *__name, mdl_uint_t __val) {
 	char *name = (char*)str_dupe(__name);
 	printf("-------> %s\n", name);
@@ -70,6 +90,7 @@ void bca_init() {
 	bca_env_add_var_int("rg_w8a", RG_W8A);
 	bca_env_add_var_int("rg_w8b", RG_W8B);
 	bca_env_add_var_int("rg_w8c", RG_W8C);
+	bca_env_add_var_int("rg_w16a", RG_W16A);
 
 	bca_env_add_var_int("sp", RG_SP);
 	bca_env_add_var_int("bp", RG_BP);
@@ -562,14 +583,15 @@ void read_return_stmt(struct node **__node) {
 mdl_uint_t bca_read_literal(char **__itr) {
 	struct bca_token *tok;
 	read_bca_token(&tok, __itr);
-	if (tok->kind == TOK_NO) {
+
+	if (tok->kind == TOK_NO)
 		return str_to_int((char*)tok->p);
-	} else if (tok->kind == TOK_IDENT) {
+	else if (tok->kind == TOK_IDENT) {
 		struct bca_blk *blk;
 		map_get(&bca_env, (mdl_u8_t const*)tok->p, strlen((char*)tok->p), (void**)&blk);
-		printf("------> :%s:\n", (char*)tok->p);
 		return blk->val;
 	}
+	return 0;
 }
 
 void bca_read_print_stmt(struct bca_blk *__blk, char **__itr) {
@@ -611,6 +633,48 @@ void bca_read_incr_or_decr_stmt(struct bca_blk *__blk, char **__itr, mdl_u8_t __
 	bca_incr_or_decr(__blk, __kind, bcit, addr, bc, flags);
 }
 
+void bca_read_eeb_init(struct bca_blk *__blk, char **__itr) {
+	mdl_u8_t blk_c = bca_read_literal(__itr);
+	mdl_u8_t flags = bca_read_literal(__itr);
+	bca_eeb_init(__blk, blk_c, flags);
+}
+
+void bca_read_eeb_put(struct bca_blk *__blk, char **__itr) {
+	mdl_u8_t blk_id = bca_read_literal(__itr);
+	bci_addr_t b_addr = bca_read_literal(__itr);
+	bci_addr_t e_addr = bca_read_literal(__itr);
+	mdl_u8_t flags = bca_read_literal(__itr);
+	bca_eeb_put(__blk, blk_id, b_addr, e_addr, flags);
+}
+
+char static* bca_read_ident(char **__itr) {
+	struct bca_token *tok;
+	read_bca_token(&tok, __itr);
+	return (char*)tok->p;
+}
+
+void bca_read_fld(struct bca_blk *__blk, char **__itr) {
+	bci_addr_t addr = bca_read_literal(__itr);
+	char *name = bca_read_ident(__itr);
+	bca_fld(__blk, addr, &env_lookup(name)->off);
+}
+
+void bca_read_fst(struct bca_blk *__blk, char **__itr) {
+	char *name = bca_read_ident(__itr);
+	bci_addr_t addr = bca_read_literal(__itr);
+	struct node *_node = env_lookup(name);
+	bca_fst(__blk, _node->_type->bcit, &_node->off, addr);
+}
+
+void bca_read_dr_stmt(struct bca_blk *__blk, char **__itr) {
+	mdl_u8_t bcit = bca_read_literal(__itr);
+	bci_addr_t dst_addr = bca_read_literal(__itr);
+	bci_addr_t src_addr = bca_read_literal(__itr);
+	mdl_u8_t flags = bca_read_literal(__itr);
+
+	bca_dr(__blk, bcit, dst_addr, src_addr, flags);
+}
+
 struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 	struct vec _vec;
 	vec_init(&_vec);
@@ -639,6 +703,16 @@ struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 			bca_read_incr_or_decr_stmt(blk, &itr, BCA_INCR);
 		} else if (!strcmp((char*)tok->p, "decr")) {
 			bca_read_incr_or_decr_stmt(blk, &itr, BCA_DECR);
+		} else if (!strcmp((char*)tok->p, "eeb_init")) {
+			bca_read_eeb_init(blk, &itr);
+		} else if (!strcmp((char*)tok->p, "eeb_put")) {
+			bca_read_eeb_put(blk, &itr);
+		} else if (!strcmp((char*)tok->p, "fld")) {
+			bca_read_fld(blk, &itr);
+		} else if (!strcmp((char*)tok->p, "fst")) {
+			bca_read_fst(blk, &itr);
+		} else if (!strcmp((char*)tok->p, "dr")) {
+			bca_read_dr_stmt(blk, &itr);
 		} else
 			itr++;
 	}
@@ -1236,9 +1310,10 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 	struct type *base_type = NULL;
 	struct type *_type = NULL;
 	struct node **node;
+	mdl_u8_t bca = 0;
 	struct token *_tok;
 	read_token(&_tok, 1);
-
+	bca = _tok->bca;
 	read_decl_spec(&base_type, _tok);
 
 	if (next_token_is(SEMICOLON))return 0;
@@ -1258,6 +1333,8 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 		ast_var(&var, _type, name);
 
 		map_put(__is_local? local_env:&global_env, (mdl_u8_t*)name, strlen(name), var);
+		bca_env_add_var_int(name, RG_W16A);
+
 		printf("name ----- %s\n", name);
 
 		if(next_token_is(OP_ASSIGN))

@@ -45,6 +45,7 @@ mdl_u8_t ignore_space() {
 # define puti(__a, __b) *__a = __b; __a++;
 void static build_token(struct token *__tok, struct token *__tmpl) {
 	*__tok = *__tmpl;
+	__tok->bca = 0;
 }
 
 void static make_chr(struct token *__tok, char *__chr) {
@@ -269,6 +270,10 @@ void static _read_token(struct token *__tok) {
 		break;
 		case '<':
 			make_keyword(__tok, LTS);
+			incr_src_itr();
+		break;
+		case '\\':
+			make_keyword(__tok, BACKSLASH);
 			incr_src_itr();
 		break;
 		case '\n': __tok->kind=TOK_NEWLINE; incr_src_itr(); break;

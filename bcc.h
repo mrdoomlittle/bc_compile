@@ -93,7 +93,8 @@ enum {
 	LTS,
 	ELLIPSIS,
 	K_BCA,
-	K_SIZEOF
+	K_SIZEOF,
+	BACKSLASH
 };
 
 enum {
@@ -103,7 +104,12 @@ enum {
 	BCA_ASSIGN,
 	BCA_NOP,
 	BCA_INCR,
-	BCA_DECR
+	BCA_DECR,
+	BCA_EEB_INIT,
+	BCA_EEB_PUT,
+	BCA_FLD,
+	BCA_FST,
+	BCA_DR
 };
 
 enum {
@@ -170,6 +176,7 @@ struct token {
 	mdl_u8_t kind, id;
 	void *p;
 	mdl_uint_t bc;
+	mdl_u8_t bca;
 };
 
 struct buff {
@@ -240,7 +247,7 @@ struct node {
 
 	struct vec _vec;
 
-	mdl_u16_t off, bc;
+	bci_addr_t off, bc;
 };
 
 struct bca_token {
@@ -254,6 +261,9 @@ struct bca_blk {
 	bci_addr_t addr, dst_addr, src_addr;
 	mdl_uint_t val, bc;
 	char *name;
+	bci_addr_t b_addr, e_addr;
+	mdl_u8_t eeb_c, eeb_id;
+	void *p;
 };
 
 // bcc.c

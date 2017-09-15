@@ -97,7 +97,7 @@ int main(int __argc, char const *__argv[]) {
 		else if (!strcmp(*arg_itr, "-I")) {
 			char **inc_pth;
 			vec_push(&inc_pths, (void**)&inc_pth, sizeof(char*));
-			*inc_pth = *(++arg_itr);
+			*inc_pth = (char*)*(++arg_itr);
 		}
 		arg_itr++;
 	}

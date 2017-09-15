@@ -181,6 +181,12 @@ void read_define() {
 
 	struct token *tok = read_token(NULL, 0);
 	while (tok->kind != TOK_NEWLINE) {
+		if (is_keyword(tok, BACKSLASH)) {
+			while(tok->kind != TOK_NEWLINE)
+				read_token(&tok, 0);
+			read_token(&tok, 0);
+		}
+
 		struct token **_tok = NULL;
 		vec_push(toks, (void**)&_tok, sizeof(struct token*));
 		*_tok = tok;
@@ -259,13 +265,13 @@ struct token* peek_token(struct token **__tok) {
 	return *__tok;
 }
 
-void conv_keyword(struct token *__tok, mdl_u8_t __id) {
+void to_keyword(struct token *__tok, mdl_u8_t __id) {
 	__tok->id = __id;
 	__tok->kind = TOK_KEYWORD;
 }
 
-mdl_u8_t is_ident(struct token *__tok, char *__s, mdl_u8_t __vfs) {
-	return __tok->kind == TOK_IDENT && !strcmp((char*)__tok->p+__vfs, __s);
+mdl_u8_t is_ident(struct token *__tok, char *__s, mdl_u8_t __off) {
+	return !strcmp((char*)__tok->p+__off, __s);
 }
 
 bcc_err_t expect_token(mdl_u8_t __kind, mdl_u8_t __id) {
@@ -301,41 +307,48 @@ void read_typedef() {
 
 mdl_u8_t maybe_keyword(struct token *__tok) {
 	if (__tok->kind != TOK_IDENT) return 1;
+	if (*(mdl_u32_t*)__tok->p == 0x5F616362) {
+		__tok->p = (void*)((mdl_u8_t*)__tok->p+sizeof(mdl_u32_t));
+		if (!maybe_keyword(__tok)) return 0;
+
+		__tok->bca = 1;
+		return 1;
+	}
 
 	if (is_ident(__tok, "if", 0))
-		conv_keyword(__tok, K_IF);
+		to_keyword(__tok, K_IF);
 	else if (is_ident(__tok, "8_t", 1))
-		conv_keyword(__tok, K_X8_T);
+		to_keyword(__tok, K_X8_T);
 	else if (is_ident(__tok, "16_t", 1))
-		conv_keyword(__tok, K_X16_T);
+		to_keyword(__tok, K_X16_T);
 	else if (is_ident(__tok, "32_t", 1))
-		conv_keyword(__tok, K_X32_T);
+		to_keyword(__tok, K_X32_T);
 	else if (is_ident(__tok, "64_t", 1))
-		conv_keyword(__tok, K_X64_T);
+		to_keyword(__tok, K_X64_T);
 	else if (is_ident(__tok, "void", 0))
-		conv_keyword(__tok, K_VOID_T);
+		to_keyword(__tok, K_VOID_T);
 	else if (is_ident(__tok, "struct", 0))
-		conv_keyword(__tok, K_STRUCT);
+		to_keyword(__tok, K_STRUCT);
 	else if (is_ident(__tok, "return", 0))
-		conv_keyword(__tok, K_RETURN);
+		to_keyword(__tok, K_RETURN);
 	else if (is_ident(__tok, "exit", 0))
-		conv_keyword(__tok, K_EXIT);
+		to_keyword(__tok, K_EXIT);
 	else if (is_ident(__tok, "while", 0))
-		conv_keyword(__tok, K_WHILE);
+		to_keyword(__tok, K_WHILE);
 	else if (is_ident(__tok, "goto", 0))
-		conv_keyword(__tok, K_GOTO);
+		to_keyword(__tok, K_GOTO);
 	else if (is_ident(__tok, "else", 0))
-		conv_keyword(__tok, K_ELSE);
+		to_keyword(__tok, K_ELSE);
 	else if (is_ident(__tok, "typedef", 0))
-		conv_keyword(__tok, K_TYPEDEF);
+		to_keyword(__tok, K_TYPEDEF);
 	else if (is_ident(__tok, "bca", 0))
-		conv_keyword(__tok,  K_BCA);
+		to_keyword(__tok,  K_BCA);
 	else if (is_ident(__tok, "sizeof", 0))
-		conv_keyword(__tok,  K_SIZEOF);
+		to_keyword(__tok,  K_SIZEOF);
 	else {
 		for (struct type_def *itr = (struct type_def*)vec_begin(&type_defs); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 			if (!strcmp(itr->name, (char*)__tok->p)) {
-				conv_keyword(__tok, itr->type->id);
+				to_keyword(__tok, itr->type->id);
 			}
 		}
 		return 0;

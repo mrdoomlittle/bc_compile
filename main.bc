@@ -12,21 +12,24 @@ bca("decr(bcit, addr, bc, flags)");
 bcit_w8, bcit_w16, bcit_w32, bcit_w64, bcit_addr
 rg_w8a, rg_w8b, rg_w8c, sp, bp
 */
+// el, es
+/*
+bca_u8_t x = 21;
+bca("fld rg_w16a x");
+bca("dr bcit_w8 rg_w8a rg_w16a 0");
+bca("incr bcit_w8 rg_w8a 1 0");
+bca("fst x rg_w8a");
 
-//bca("assign rg_w8a 212 bcit_w8 0");
-//bca("print bcit_w8 rg_w8a 0");
+print(x);
+*/
 
-//
-//u8_t hello() {
-//	print(21299);
-//}
+# define hello \
+bca("fld rg_w16a x"); \
+bca("dr bcit_w8 rg_w8a rg_w16a 0"); \
+bca("incr bcit_w8 rg_w8a 1 0"); \
+bca("fst x rg_w8a");
 
-u8_t x[2] = {300, 32};
-//x[1] = 212;
-
-//x[0] = 222;
-//print(x[0]);
-print(x[0]);
-print(x[1]);
-
+bca_u8_t x = 21;
+hello
+print(x);
 exit;
