@@ -345,6 +345,8 @@ mdl_u8_t maybe_keyword(struct token *__tok) {
 		to_keyword(__tok,  K_BCA);
 	else if (is_ident(__tok, "sizeof", 0))
 		to_keyword(__tok,  K_SIZEOF);
+	else if (is_ident(__tok, "va_ptr", 0))
+		to_keyword(__tok,  K_VA_PTR);
 	else {
 		for (struct type_def *itr = (struct type_def*)vec_begin(&type_defs); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 			if (!strcmp(itr->name, (char*)__tok->p)) {

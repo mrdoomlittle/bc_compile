@@ -23,6 +23,7 @@ void read_unary_expr(struct node**);
 void read_decl_spec(struct type**, struct token*);
 void read_var_or_func(struct node**, char*);
 void read_cast_expr(struct node**);
+void make_array_type(struct type**, struct type*, mdl_uint_t);
 
 struct bca_blk bca_blk_buff[200];
 struct bca_blk *bca_blk_itr = bca_blk_buff;
@@ -222,8 +223,9 @@ void ast_goto(struct node **__node, char *__label) {
 	build_ast(__node, &(struct node){.kind=AST_GOTO, .p=(void*)__label});
 }
 
-void ast_func_call(struct node **__node, struct type *__ret_type, struct node *__goto, struct vec __args) {
+void ast_func_call(struct node **__node, struct type *__ret_type, struct node *__func, struct node *__goto, struct vec __args) {
 	build_ast(__node, &(struct node){.kind=AST_FUNC_CALL, ._type=__ret_type, .args=__args});
+	add_child(*__node, __func);
 	add_child(*__node, __goto);
 }
 
@@ -767,8 +769,6 @@ void read_stmt(struct node **__node) {
 	struct token *tok;
 	read_token(&tok, 1);
 
-//	printf("<><><><><><><><><><><><><><>?\n");
-	//print_token(tok);
 	if (tok->kind == TOK_KEYWORD) {
 		switch(tok->id) {
 			case L_BRACE: read_compound_stmt(__node); return;
@@ -781,40 +781,16 @@ void read_stmt(struct node **__node) {
 			case K_BCA: read_bca_stmt(__node); return;
 		}
 	}
-/*
-	ulex();
-	if (tok->kind == TOK_IDENT) {
-		if (next_token_is(COLON)) {
-			read_label(__node);
-		} else {
-			read_assign_expr(__node);
-		}
-	}
-*/
+
 	if (tok->kind == TOK_IDENT && next_token_is(COLON)) {
 		read_label(__node, tok);
 		return;
 	}
 
 	ulex(tok);
-/*
-	printf("---------------------------]]]]]]]]]]]]]]]]]]]]]]]]\n");
-	for (;;) {
-	read_token(&tok);
-    print_token(tok);
-	usleep(500000);
-	}
-	printf("---------------------------]]]]]]]]]]]]]]]]]]]]]]]]\n");
-*/
-//	skip_token();
+
 	read_assign_expr(__node);
 	expect_token(TOK_KEYWORD, SEMICOLON);
-/*
-else if (__tok->kind == TOK_IDENT) {
-        ulex();
-        vec_push(__vec, (void**)&node, sizeof(struct node*));
-        read_assign_expr(node);
-  */
 }
 
 void read_int(struct node **__node, char *__s) {
@@ -858,7 +834,6 @@ struct vec read_func_args() {
 
 		struct node **node;
 		vec_push(&args, (void**)&node, sizeof(struct node*));
-		*node = NULL;
 
 		struct node *arg = NULL;
 		read_stmt(&arg);
@@ -869,7 +844,6 @@ struct vec read_func_args() {
 
 	return args;
 }
-
 
 void read_declarator_params(struct vec *__params, mdl_u8_t *__ellipsis) {
 	struct token *tok;
@@ -925,10 +899,10 @@ void read_func_call(struct node **__node, struct node *__func) {
 			fprintf(stderr, "print function need one argument.\n");
 		}
 
-		ast_func_call(__node, NULL, NULL, args);
+		ast_func_call(__node, NULL, NULL, NULL, args);
 		(*__node)->kind = AST_PRINT;
 	} else if (!strcmp((char*)__func->p, "extern_call")) {
-		ast_func_call(__node, __func->_type->ret_type, NULL, args);
+		ast_func_call(__node, __func->_type->ret_type, NULL, NULL, args);
 		(*__node)->kind = AST_EXTERN_CALL;
 	} else {
 		ast_goto(&_goto, (void*)__func->p);
@@ -945,7 +919,7 @@ void read_func_call(struct node **__node, struct node *__func) {
 			vec_itr((void**)&p2, VEC_ITR_DOWN, 1);
 		}
 
-		ast_func_call(__node, __func->_type->ret_type, _goto, args);
+		ast_func_call(__node, __func->_type->ret_type, __func, _goto, args);
 	}
 }
 
@@ -955,9 +929,6 @@ void read_struct_field(struct node **__node, struct node *__struct) {
 
 	struct type *_type;
 	map_get(__struct->_type->fields, tok->p, strlen(tok->p), (void**)&_type);
-
-	printf(";;;;;;;;||||||||||||||||||| %u - %s\n", _type->offset, tok->p);
-	//printf(";;;;|| bcit_t: %u\n", (*__struct->child_buff)->_type->bcit);
 
 	ast_struct_ref(__node, __struct, _type, tok->p);
 }

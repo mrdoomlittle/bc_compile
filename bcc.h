@@ -94,7 +94,8 @@ enum {
 	ELLIPSIS,
 	K_BCA,
 	K_SIZEOF,
-	BACKSLASH
+	BACKSLASH,
+	K_VA_PTR
 };
 
 enum {
@@ -140,7 +141,8 @@ enum {
 	AST_CONV,
 	OP_CAST,
 	AST_STRUCT_REF,
-	AST_BCA
+	AST_BCA,
+	AST_VA_PTR
 };
 
 # define BCC_SUCCESS 0
@@ -210,6 +212,7 @@ struct vec {
 	mdl_u8_t *itr;
 	mdl_uint_t first_blk, last_blk;
 	struct vec_free free;
+	mdl_uint_t blk_c;
 };
 
 struct map {
@@ -331,7 +334,7 @@ void vec_pop(struct vec*, void*, mdl_uint_t);
 void* vec_first(struct vec*);
 void* vec_last(struct vec*);
 void vec_free(struct vec*, void*, mdl_u8_t);
-
+mdl_uint_t vec_blk_c(struct vec*);
 void* vec_get(struct vec*, mdl_uint_t);
 void vec_de_init(struct vec*);
 void vec_de_init_all();
