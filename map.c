@@ -1,20 +1,12 @@
 # include "bcc.h"
-# define MAP_DEPTH_MAX 0
-struct map_entry_t {
-	mdl_u64_t part;
+# include <malloc.h>
+# include <string.h>
+typedef struct {
 	mdl_u32_t val;
 	void *data;
-};
-
-mdl_u64_t map_get_part(mdl_u8_t const* __key, mdl_uint_t __bc) {
-	if (__bc >= sizeof(mdl_u64_t))
-		return *(mdl_u64_t*)__key;
-	else if (__bc >= sizeof(mdl_u32_t))
-		return *(mdl_u32_t*)__key;
-	else if (__bc >= sizeof(mdl_u32_t))
-		return *(mdl_u16_t*)__key;
-	return 0;
-}
+	mdl_uint_t bc;
+	mdl_u8_t *key
+} map_entry_t;
 
 mdl_u32_t map_hash(mdl_u8_t const *__key, mdl_uint_t __bc) {
 	mdl_u8_t const *itr = __key;
@@ -30,26 +22,27 @@ mdl_u32_t map_hash(mdl_u8_t const *__key, mdl_uint_t __bc) {
 	return ret_val;
 }
 
-struct map_entry_t* _map_find(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, mdl_u32_t __val) {
-	struct vec **map_block = __map->table+*__key;
-	struct map_entry_t *itr;
+map_entry_t* _map_find(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, mdl_u32_t __val) {
+	struct vec **map_blk = __map->table+(__val&0xFF);
+	map_entry_t *itr;
 
-	if (*map_block == NULL) {
+	if (*map_blk == NULL) {
 		if (__map->parent != NULL) goto _search_parent;
 		return NULL;
 	}
 
-	itr = (struct map_entry_t*)vec_first(*map_block);
+	itr = (map_entry_t*)vec_first(*map_blk);
 
-	if (!vec_size(*map_block)) {
+	if (!vec_blk_c(*map_blk)) {
 		if (__map->parent != NULL) goto _search_parent;
 		fprintf(stderr, "map table empty, no data to be found.\n");
 		return NULL;
 	}
 
 	while(itr != NULL) {
-		printf("comparing key: [%x] with [%x]\n", itr->val, __val);
-		if (itr->val == __val && itr->part == map_get_part(__key+1, __bc-1)) return itr;
+		printf("comparing key{%x} with {%x}\n", itr->val, __val);
+		if (itr->val == __val && itr->bc == __bc)
+			if (!memcmp(itr->key, __key, __bc)) return itr;
 		vec_itr((void**)&itr, VEC_ITR_DOWN, 1);
 	}
 
@@ -79,9 +72,9 @@ void *f_malloc(mdl_uint_t __bc) {
 
 void static map_initr(void *__p) {
 	void *p;
-	for (mdl_uint_t e = 0; e != (mdl_u8_t)~0; e++) {
-		*((void**)((mdl_u8_t*)__p+(e*sizeof(void*)))) = (p = (void*)f_malloc(((mdl_u8_t)~0)*sizeof(void*)));
-		memset(p, 0, ((mdl_u8_t)~0)*sizeof(void*));
+	for (mdl_uint_t e = 0; e != 0xFF; e++) {
+		*((void**)((mdl_u8_t*)__p+(e*sizeof(void*)))) = (p = (void*)f_malloc((0xFF)*sizeof(void*)));
+		memset(p, 0, (0xFF)*sizeof(void*));
 	}
 }
 
@@ -96,7 +89,7 @@ void static map_initl(void *__p) {
 	usleep(10000);
 	printf("%u\n", c);
 
-	for (mdl_uint_t e = 0; e != (mdl_u8_t)~0; e++) {
+	for (mdl_uint_t e = 0; e != 0xFF; e++) {
 		void *p = *((void**)((mdl_u8_t*)__p+(e*sizeof(void*))));
 		map_initr(p);
 		map_initl(p);
@@ -107,11 +100,12 @@ void static map_initl(void *__p) {
 */
 
 void map_init(struct map *__map) {
-	__map->table = (struct vec**)malloc(((mdl_u8_t)~0)*sizeof(struct vec*));
-	for (mdl_uint_t i = 0; i != ((mdl_u8_t)~0); i++) *(__map->table+i) = NULL;
+	__map->table = (struct vec**)malloc(0xFF*sizeof(struct vec*));
+	struct vec **itr = __map->table;
+	while(itr != __map->table+0xFF) *(itr++) = NULL;
 	__map->parent = NULL;
 
-//	__map->r = (void*)f_malloc(((mdl_u8_t)~0)*sizeof(void*));
+//	__map->r = (void*)f_malloc((0xFF)*sizeof(void*));
 //	void *p = __map->r;
 
 //	map_initr(p);
@@ -119,9 +113,10 @@ void map_init(struct map *__map) {
 }
 
 void map_de_init(struct map *__map) {
-	for (mdl_uint_t i = 0; i != ((mdl_u8_t)~0); i++) {
-		struct vec **map_block = __map->table+i;
-		if (*map_block != NULL) vec_de_init(*map_block);
+	struct vec **itr = __map->table;
+	while(itr != __map->table+0xFF) {
+		if (*itr != NULL) vec_de_init(*itr);
+		itr++;
 	}
 
 	free(__map->table);
@@ -150,55 +145,55 @@ struct map *map_get_parent(struct map *__map){
 
 void map_find(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, mdl_u32_t __val, void **__data) {
 	*__data = _map_find(__map, __key, __bc, __val)->data;
-	if (!*__data) {
-		fprintf(stderr, "failed to locate key[%x].\n", __key);
-	}
+	if (!*__data) fprintf(stderr, "failed to locate key{%x}.\n", __key);
 }
 
 void map_put(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, void *__data) {
-	mdl_u32_t hash = map_hash(__key, __bc);
-	if (_map_find(__map, __key, __bc, hash) != NULL) {
-		fprintf(stderr, "key[%x] already exists.\n", hash);
+	mdl_u32_t val = map_hash(__key, __bc);
+	if (_map_find(__map, __key, __bc, val) != NULL) {
+		fprintf(stderr, "key{%x} already exists.\n", val);
 		return;
 	}
 
-	struct vec **map_block = __map->table+*__key;
-	if (!(*map_block)) {
-		*map_block = malloc(sizeof(struct vec));
-		vec_init(*map_block);
+	struct vec **map_blk = __map->table+(val&0xFF);
+	if (!(*map_blk)) {
+		*map_blk = (struct vec*)malloc(sizeof(struct vec));
+		vec_init(*map_blk);
 	}
 
-	struct map_entry_t *map_entry;
-	vec_push(*map_block, (void**)&map_entry, sizeof(struct map_entry_t));
+	map_entry_t *map_entry;
+	vec_push(*map_blk, (void**)&map_entry, sizeof(map_entry_t));
 
-	printf("put with key[%x]. in map: %p\n", hash, __map);
-	map_entry->part = map_get_part(__key+1, __bc-1);
-	map_entry->val = hash;
+	printf("put with key{%x}. in map: %p\n", val, __map);
+	map_entry->val = val;
 	map_entry->data = __data;
+	map_entry->key = (mdl_u8_t*)__key;
+	map_entry->bc = __bc;
 }
 
-void map_get_entry(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, struct map_entry_t **__map_entry) {
-	mdl_u32_t hash = map_hash(__key, __bc);
+void map_get_entry(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, map_entry_t **__map_entry) {
+	mdl_u32_t val = map_hash(__key, __bc);
 
-	printf("get with key[%x]. in map: %p\n", hash, __map);
+	printf("get with key{%x}. in map: %p\n", val, __map);
 
-	if (!(*__map_entry = _map_find(__map, __key, __bc, hash))) {
-		fprintf(stderr, "key[%x] not located.\n", hash);
+	if (!(*__map_entry = _map_find(__map, __key, __bc, val))) {
+		fprintf(stderr, "key{%x} not located.\n", val);
 		*__map_entry = NULL;
 	} else
-		printf("key[%x] was located.\n", hash);
+		printf("key{%x} was located.\n", val);
 }
 
 void map_get(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc, void **__data) {
-	struct map_entry_t *map_entry = NULL;
+	map_entry_t *map_entry = NULL;
 	map_get_entry(__map, __key, __bc, &map_entry);
 	if (map_entry != NULL) *__data = map_entry->data; else *__data = NULL;
 }
 
 void map_free(struct map *__map, mdl_u8_t const *__key, mdl_uint_t __bc) {
-    struct map_entry_t *map_entry = NULL;
+    map_entry_t *map_entry = NULL;
     map_get_entry(__map, __key, __bc, &map_entry);
-	struct vec **map_block = __map->table+*__key;
-	if (map_block != NULL)
-		vec_free(*map_block, (void*)map_entry, 1);
+	mdl_u32_t val = map_hash(__key, __bc);
+	struct vec **map_blk = __map->table+(val&0xFF);
+	if (map_blk != NULL)
+		vec_free(*map_blk, (void*)map_entry, 1);
 }

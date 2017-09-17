@@ -1,5 +1,5 @@
 # include "bcc.h"
-mdl_u8_t *to_free[212];
+mdl_u8_t *to_free[400];
 mdl_u8_t **tf_itr;
 
 # define PAGE_SIZE 20
@@ -21,6 +21,7 @@ void _vec_init(struct vec *__vec) {
 	__vec->p = (mdl_u8_t*)malloc(PAGE_SIZE);
 	__vec->itr = __vec->p;
 	__vec->pc++;
+	__vec->blk_c = 0;
 
 	__vec->tf = tf_itr;
 	*tf_itr = __vec->p;
@@ -50,6 +51,10 @@ struct vec_blk_desc* get_blk_desc(void *__ptr) {
 
 mdl_u8_t static _is_flag(mdl_u8_t __flags, mdl_u8_t __flag) {
 	return (__flags & __flag) == __flag? 1:0;
+}
+
+mdl_uint_t vec_blk_c(struct vec *__vec) {
+	return __vec->blk_c;
 }
 
 void vec_itr(void **__ptr, mdl_u8_t __flags, mdl_uint_t __ic) {
@@ -214,6 +219,7 @@ void vec_push(struct vec *__vec, void **__data, mdl_uint_t __n) {
 
 	__vec->size += __n+sizeof(struct vec_blk_desc);
 	__vec->itr += __n;
+	__vec->blk_c++;
 }
 
 void vec_pop(struct vec *__vec, void *__data, mdl_uint_t __n) {
@@ -245,6 +251,7 @@ void vec_pop(struct vec *__vec, void *__data, mdl_uint_t __n) {
 
 	__vec->size -= bytes;
 	__vec->itr -= bytes;
+	__vec->blk_c--;
 }
 
 void vec_unchain(struct vec *__vec, struct vec_blk_desc *__blk_desc) {
@@ -368,12 +375,14 @@ void* vec_end(struct vec *__vec) {
 void vec_de_init(struct vec *__vec) {
 	free(__vec->p);
 	for (mdl_u8_t **itr = to_free; itr != tf_itr; itr++) {
-		if (*itr == __vec->p) {*itr = NULL;break;}
+		if (*itr == __vec->p) {
+			*itr = *(--tf_itr);
+			break;
+		}
 	}
 }
 
 void vec_de_init_all() {
-	for (mdl_u8_t **itr = to_free; itr != tf_itr; itr++) {
+	for (mdl_u8_t **itr = to_free; itr != tf_itr; itr++)
 		if (*itr != NULL) free(*itr);
-	}
 }
