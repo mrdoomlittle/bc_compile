@@ -82,10 +82,10 @@ void print_node(struct node *__node) {
 
 char const* node_kind_as_str(mdl_u8_t __kind) {
 	switch(__kind) {
-		case AST_INCR:
-			return "ast incr";
-		case AST_DECR:
-			return "ast decr";
+		case OP_INCR:
+			return "op incr";
+		case OP_DECR:
+			return "op decr";
 		case AST_DECL:
 			return "ast decl";
 		case AST_EXIT:
@@ -96,18 +96,18 @@ char const* node_kind_as_str(mdl_u8_t __kind) {
 			return "ast var";
 		case AST_INIT:
 			return "ast init";
-		case AST_ADD:
-			return "ast add";
-		case AST_SUB:
-			return "ast sub";
-		case AST_ASSIGN:
-			return "ast assign";
+		case OP_ADD:
+			return "op add";
+		case OP_SUB:
+			return "op sub";
+		case OP_ASSIGN:
+			return "op assign";
 		case AST_IF:
 			return "ast if";
-		case AST_OP_EQ:
-			return "ast op eq";
-		case AST_OP_NEQ:
-			return "ast op neq";
+		case OP_EQ:
+			return "op eq";
+		case OP_NEQ:
+			return "op neq";
 		case AST_COMPOUND_STMT:
 			return "ast compound statment";
 		case AST_LABEL:
@@ -132,6 +132,10 @@ char const* node_kind_as_str(mdl_u8_t __kind) {
 			return "op cast";
 		case AST_STRUCT_REF:
 			return "ast struct ref";
+		case OP_GT:
+			return "op gt";
+		case OP_LT:
+			return "op lt";
 	}
 	return "no data";
 }
@@ -168,15 +172,15 @@ char const* bca_blk_kind_as_str(mdl_u8_t __kind) {
 
 char const* token_id_as_str(mdl_u8_t __id) {
 	switch(__id) {
-		case OP_INCR:
-			return "op incr";
-		case OP_DECR:
-			return "op decr";
-		case OP_EQ:
+		case INCR:
+			return "incr";
+		case DECR:
+			return "decr";
+		case EQ:
 			return "equal";
-		case OP_NEQ:
+		case NEQ:
 			return "not equal";
-		case OP_ASSIGN:
+		case EQEQ:
 			return "assign";
 		case ID_INVALID:
 			return "invalid";
@@ -194,9 +198,14 @@ char const* token_id_as_str(mdl_u8_t __id) {
 			return "expression";
 		case K_EXIT:
 			return "program exit";
-		case OP_PLUS:
-			return "plus oporator";
+		case ADD:
+			return "add";
+		case SUB:
+			return "sub";
+		case GT:
+			return "gt";
+		case LT:
+			return "lt";
 	}
-
 	return "no data";
 }

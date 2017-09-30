@@ -43,9 +43,18 @@ struct map macros;
 struct vec type_defs;
 struct vec static* inc_pths;
 bcc_err_t bcc_init(struct bcc *__bcc, struct vec *__inc_pths) {
-	buff_init(&file_buff, sizeof(struct _file_t), 20);
+	if (access(__bcc->src_fpth, R_OK) < 0) {
+		fprintf(stderr, "bcc, source file does not exist, errno: %d\n", errno);
+		return BCC_FAILURE;
+	}
 
-	open_src_file(__bcc->src_fpth);
+	if (!access(__bcc->dst_fpth, F_OK) && access(__bcc->dst_fpth, W_OK) < 0) {
+		fprintf(stderr, "bcc, don't have write access to destination file, errno: %d\n", errno);
+		return BCC_FAILURE;
+	}
+
+	buff_init(&file_buff, sizeof(struct _file_t), 20);
+	open_src_file((char*)__bcc->src_fpth);
 	vec_init(&type_defs);
 	map_init(&macros);
 	inc_pths = __inc_pths;
@@ -151,9 +160,10 @@ void read_include() {
 	buff_push(&file_buff, &file);
 
 	if (!std) {
-		if (!access(fpth, 0)) {
+		if (!access(fpth, R_OK)) {
 			open_src_file(fpth);
-		}
+		} else
+			fprintf(stderr, "bcc, don't have access to file '%s', errno: %d\n", fpth, errno);
 		return;
 	}
 
@@ -162,12 +172,13 @@ void read_include() {
 		char *fr;
 		char *_fpth = strcmb((fr = strcmb(*itr, "/")), fpth);
 
-		if (!access(_fpth, 0)) {
+		if (!access(_fpth, R_OK)) {
 			open_src_file(_fpth);
 			free(fr);
 			free(_fpth);
 			return;
-		}
+		} else
+			fprintf(stderr, "bcc, don't have access to file '%s', errno: %d\n", fpth, errno);
 	}
 }
 
@@ -227,7 +238,7 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 
 				struct token **itr = (struct token**)vec_end(toks);
 				while(itr != NULL) {
-					if (itr != (struct token*)vec_begin(toks))
+					if (itr != (struct token**)vec_begin(toks))
 						ulex(*itr);
 					else
 						tok = *itr;

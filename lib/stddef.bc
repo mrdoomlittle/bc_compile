@@ -1,0 +1,2 @@
+typedef u8_t char;
+typedef u32_t size_t;

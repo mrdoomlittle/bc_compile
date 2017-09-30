@@ -164,7 +164,7 @@ void static _read_token(struct token *__tok) {
 
 	switch(*src_itr) {
 		case '=':
-			make_keyword(__tok, is_next('=')? OP_EQ:OP_ASSIGN);
+			make_keyword(__tok, is_next('=')? EQEQ:EQ);
 			if (is_next('=')) incr_src_itr();
 			incr_src_itr();
 		break;
@@ -192,21 +192,21 @@ void static _read_token(struct token *__tok) {
 		break;
 		case '+':
 			if (is_next('+')) {
-				make_keyword(__tok, OP_INCR);
+				make_keyword(__tok, INCR);
 				incr_src_itr();
 			} else
-				make_keyword(__tok, OP_PLUS);
+				make_keyword(__tok, ADD);
 			incr_src_itr();
 		break;
 		case '-':
 			if (is_next('>')) {
-				make_keyword(__tok, OP_ARROW);
+				make_keyword(__tok, ARROW);
 				incr_src_itr();
 			} else if (is_next('-')) {
-				make_keyword(__tok, OP_DECR);
+				make_keyword(__tok, DECR);
 				incr_src_itr();
 			} else
-				make_keyword(__tok, OP_MINUS);
+				make_keyword(__tok, SUB);
 			incr_src_itr();
 		break;
 		case '[':
@@ -259,17 +259,25 @@ void static _read_token(struct token *__tok) {
 		break;
 		case '!':
 			if (is_next('=')) {
-				make_keyword(__tok, OP_NEQ);
+				make_keyword(__tok, NEQ);
 				incr_src_itr();
 			}
 			incr_src_itr();
 		break;
 		case '>':
-			make_keyword(__tok, GTS);
+			if (is_next('=')) {
+				make_keyword(__tok, GEQ);
+				incr_src_itr();
+			} else
+				make_keyword(__tok, GT);
 			incr_src_itr();
 		break;
 		case '<':
-			make_keyword(__tok, LTS);
+			if (is_next('=')) {
+				make_keyword(__tok, LEQ);
+				incr_src_itr();
+			} else
+				make_keyword(__tok, LT);
 			incr_src_itr();
 		break;
 		case '\\':
@@ -311,8 +319,6 @@ char* read_header_fpth(mdl_u8_t *__std) {
 		byte_ncpy(buff, (mdl_u8_t*)buff_begin(&tmp_buff), bc);
 
 		incr_src_itr();
-		printf("----------------------000||||||||||||||||||||||||||||||||||||||||||||||||||||||\ : %u\n", *src_itr);
-
 		return (char*)buff_begin(&tmp_buff);
 	}
 	return NULL;

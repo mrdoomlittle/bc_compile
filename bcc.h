@@ -54,12 +54,12 @@ enum {
 };
 
 enum {
-	OP_INCR,
-	OP_DECR,
+	INCR,
+	DECR,
 	PERIOD,
-	OP_EQ,
-	OP_NEQ,
-	OP_ASSIGN,
+	EQEQ,
+	EQ,
+	NEQ,
 	ID_INVALID,
 	L_BRACE,
 	R_BRACE,
@@ -77,8 +77,8 @@ enum {
 	K_GOTO,
 	K_EXIT,
 	K_WHILE,
-	OP_PLUS,
-	OP_MINUS,
+	ADD,
+	SUB,
 	K_ELSE,
 	K_TYPEDEF,
 	NOSIGN,
@@ -88,9 +88,11 @@ enum {
 	L_BRACKET,
 	R_BRACKET,
 	K_STRUCT,
-	OP_ARROW,
-	GTS,
-	LTS,
+	ARROW,
+	GT,
+	GEQ,
+	LT,
+	LEQ,
 	ELLIPSIS,
 	K_BCA,
 	K_SIZEOF,
@@ -114,8 +116,8 @@ enum {
 };
 
 enum {
-	AST_INCR,
-	AST_DECR,
+	OP_INCR,
+	OP_DECR,
 	AST_DECL,
 	AST_PRINT,
 	AST_EXTERN_CALL,
@@ -123,15 +125,19 @@ enum {
 	AST_LITERAL,
 	AST_VAR,
 	AST_INIT,
-	AST_ASSIGN,
-	AST_ADD,
-	AST_SUB,
+	OP_ASSIGN,
+	OP_ADD,
+	OP_SUB,
 	AST_IF,
 	AST_GOTO,
 	AST_LABEL,
 	AST_WHILE,
-	AST_OP_EQ,
-	AST_OP_NEQ,
+	OP_EQ,
+	OP_NEQ,
+	OP_GT,
+	OP_GEQ,
+	OP_LT,
+	OP_LEQ,
 	AST_COMPOUND_STMT,
 	AST_FUNC_CALL,
 	AST_FUNC,
@@ -142,7 +148,9 @@ enum {
 	OP_CAST,
 	AST_STRUCT_REF,
 	AST_BCA,
-	AST_VA_PTR
+	AST_VA_PTR,
+	AST_OP_GT,
+	AST_OP_LT
 };
 
 # define BCC_SUCCESS 0
@@ -308,6 +316,7 @@ void print_node(struct node*);
 char const* token_kind_as_str(mdl_u8_t);
 char const* token_id_as_str(mdl_u8_t);
 char const* bca_blk_kind_as_str(mdl_u8_t);
+char const* node_kind_as_str(mdl_u8_t);
 
 // file stuff
 void set_output_file(struct file_t*);

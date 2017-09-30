@@ -5,7 +5,7 @@ typedef struct {
 	mdl_u32_t val;
 	void *data;
 	mdl_uint_t bc;
-	mdl_u8_t *key
+	mdl_u8_t *key;
 } map_entry_t;
 
 mdl_u32_t map_hash(mdl_u8_t const *__key, mdl_uint_t __bc) {

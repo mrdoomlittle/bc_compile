@@ -1,0 +1,62 @@
+goto main;
+# include "lib/lib.bc"
+//# include "lib/alloc.bc"
+//# define hello exit;
+
+/*
+bca("print(bcit, addr, flags)");
+bca("assign(addr, val, bcit, flags)");
+bca("mov(bcit, dst_addr, src_addr, flags)");
+bca("nop(flags)");
+bca("incr(bcit, addr, bc, flags)");
+bca("decr(bcit, addr, bc, flags)");
+
+bcit_w8, bcit_w16, bcit_w32, bcit_w64, bcit_addr
+rg_w8a, rg_w8b, rg_w8c, sp, bp
+*/
+// el, es
+/*
+bca_u8_t x = 21;
+bca("fld rg_w16a x");
+bca("dr bcit_w8 rg_w8a rg_w16a 0");
+bca("incr bcit_w8 rg_w8a 1 0");
+bca("fst x rg_w8a");
+
+print(x);
+*/
+
+struct test {
+	u32_t x;
+};
+
+/*
+u8_t* hello(u8_t __x) {
+	return __x;
+}
+
+hello(2);
+print(21299);
+*/
+
+//struct test *x = (struct test*)alloc(sizeof(struct test));
+//x->x = 21299;
+
+//print(x->x);
+
+main:
+printf("Hello World\n");
+u8_t* a(u8_t* __arg) {
+	return __arg+1;
+}
+
+
+u8_t* b(u8_t* __arg) {
+	return a(__arg+1)
+}
+
+u8_t* c(u8_t* __arg) {
+	return b(__arg+1);
+}
+
+print(c(0));
+exit;

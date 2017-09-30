@@ -110,7 +110,7 @@ void bci_emit_cmp(mdl_u8_t __l_type, mdl_u8_t __r_type, bci_addr_t __l_addr, bci
 	bcb_emit_addr(__dst_addr);
 }
 
-void bci_emit_cond_jmp(mdl_u8_t __cond, bci_addr_t __jmpm_addr, bci_addr_t __cond_addr) {
+void bci_emit_cjmp(mdl_u8_t __cond, bci_addr_t __jmpm_addr, bci_addr_t __cond_addr) {
 	bcii_emit(_bcii_cjmp, 0);
 	bcb_emit_w8(__cond);
 
@@ -330,13 +330,13 @@ void static emit_cmp(struct node *__node) {
 
 void static emit_binop(struct node *__node) {
 	switch(__node->kind) {
-		case AST_ADD:
+		case OP_ADD:
 			emit_aop(__node, _bci_aop_add);
 		break;
-		case AST_SUB:
+		case OP_SUB:
 			emit_aop(__node, _bci_aop_sub);
 		break;
-		case AST_OP_EQ: case AST_OP_NEQ:
+		case OP_EQ: case OP_NEQ: case OP_GT: case OP_LT: case OP_GEQ: case OP_LEQ:
 			emit_cmp(__node);
 		break;
 		default:
@@ -372,9 +372,7 @@ void emit_var(struct node*);
 
 void emit_save(mdl_u8_t, bci_addr_t);
 
-void emit_incr_or_decr_deref() {
-
-}
+void emit_incr_or_decr(struct node*, mdl_u8_t);
 
 void emit_assign_deref(struct type *__val, struct node *__node, mdl_uint_t __off) {
 	mdl_u8_t ptr_bcit = __node->_type->bcit;
@@ -565,15 +563,23 @@ void emit_if(struct node *__node) {
 	bci_emit_assign(RG_W16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
 	bci_addr_t jmpm_addr = RG_W16B;
 
-	if (cond->kind == AST_OP_EQ)
-		bci_emit_cond_jmp(_bcic_neq, jmpm_addr, get_rga_addr(_bcit_w8));
-	if (cond->kind == AST_OP_NEQ)
-		bci_emit_cond_jmp(_bcic_eq, jmpm_addr, get_rga_addr(_bcit_w8));
+	if (cond->kind == OP_EQ)
+		bci_emit_cjmp(_bcic_neq, jmpm_addr, get_rga_addr(_bcit_w8));
+	else if (cond->kind == OP_NEQ)
+		bci_emit_cjmp(_bcic_eq, jmpm_addr, get_rga_addr(_bcit_w8));
+	else if (cond->kind == OP_GT)
+		bci_emit_cjmp(_bcic_leq, jmpm_addr, get_rga_addr(_bcit_w8));
+	else if (cond->kind == OP_LT)
+		bci_emit_cjmp(_bcic_geq, jmpm_addr, get_rga_addr(_bcit_w8));
+	else if (cond->kind == OP_GEQ)
+		bci_emit_cjmp(_bcic_lt, jmpm_addr, get_rga_addr(_bcit_w8));
+	else if (cond->kind == OP_LEQ)
+		bci_emit_cjmp(_bcic_gt, jmpm_addr, get_rga_addr(_bcit_w8));
 
 	emit_expr(*(__node->child_buff+1));
 
 	bci_addr_t *eljmp_addr;
-	bci_emit_assign(jmpm_addr, (mdl_u8_t**)&eljmp_addr, _bcit_w16, 0);
+	bci_emit_assign(jmpm_addr, (mdl_u8_t**)&eljmp_addr, _bcit_addr, 0);
 	bci_emit_jmp(jmpm_addr);
 
 	*jmp_addr = bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff);
@@ -631,13 +637,15 @@ void emit_func(struct node *__node) {
 	emit_expr(*__node->child_buff);
 
 	printf("stack addr: %u\n", stack_addr);
-	for (struct node **itr = (struct node**)vec_begin(&__node->params); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
-		printf("func var offset: %d\n", stack_addr-base_addr);
-		(*itr)->off = stack_addr-base_addr;
-		mdl_u8_t bcit = (*itr)->_type->bcit;
-		incr_stack_addr(bcit_sizeof(bcit));
-		stack_pop(bcit);
-		emit_store(*itr);
+	if (vec_blk_c(&__node->params) > 0) {
+		for (struct node **itr = (struct node**)vec_begin(&__node->params); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
+			printf("func var offset: %d\n", stack_addr-base_addr);
+			(*itr)->off = stack_addr-base_addr;
+			mdl_u8_t bcit = (*itr)->_type->bcit;
+			incr_stack_addr(bcit_sizeof(bcit));
+			stack_pop(bcit);
+			emit_store(*itr);
+		}
 	}
 
 	if (__node->_type->hva) {
@@ -670,36 +678,42 @@ void emit_func_call(struct node *__node) {
 	mdl_uint_t va_size = vec_blk_c(&__node->args)-vec_blk_c(&func->params);
 
 	struct node **p = (struct node**)vec_end(&__node->args);
-	vec_itr((void**)&p, VEC_ITR_UP, va_size);
+	if (vec_blk_c(&__node->args) > 0)
+		vec_itr((void**)&p, VEC_ITR_UP, va_size);
 
 	struct node **itr = p;
-	for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_UP, 1)) {
-		emit_expr(*itr);
-		mdl_u8_t bcit = (*itr)->_type->bcit;
-		stack_push((*itr)->_type->bcit);
-		printf("00000000000000000000000000000000000000000000000000000000000000000000\n");
+	if (vec_blk_c(&__node->args) > 0) {
+		for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_UP, 1)) {
+			emit_expr(*itr);
+			mdl_u8_t bcit = (*itr)->_type->bcit;
+			stack_push((*itr)->_type->bcit);
+			printf("00000000000000000000000000000000000000000000000000000000000000000000\n");
+		}
 	}
 
 	if (hva) *va_addr = stack_addr;
 
-	vec_itr((void**)&p, VEC_ITR_DOWN, 1);
+	if (vec_blk_c(&__node->args) > 0)
+		vec_itr((void**)&p, VEC_ITR_DOWN, 1);
 
 	itr = p;
 
 	bci_addr_t addr = stack_addr;
 	incr_stack_addr(va_size*bcit_sizeof(_bcit_w64));
 
-	while(itr != NULL) {
-		printf("=======================================================; %u\n", va_size);
-		mdl_u8_t bcit = (*itr)->_type->bcit;
-		mdl_u64_t *val;
-		bci_emit_assign(addr, &val, _bcit_w64, 0);
-		*val = 0;
+	if (vec_blk_c(&__node->args) > 0) {
+		while(itr != NULL) {
+			printf("=======================================================; %u\n", va_size);
+			mdl_u8_t bcit = (*itr)->_type->bcit;
+			mdl_u64_t *val;
+			bci_emit_assign(addr, (mdl_u8_t**)&val, _bcit_w64, 0);
+			*val = 0;
 
-		emit_expr(*itr);
-		bci_emit_mov(bcit, addr, get_rga_addr(bcit), 0);
-		addr+= bcit_sizeof(_bcit_w64);
-		vec_itr((void**)&itr, VEC_ITR_DOWN, 1);
+			emit_expr(*itr);
+			bci_emit_mov(bcit, addr, get_rga_addr(bcit), 0);
+			addr+= bcit_sizeof(_bcit_w64);
+			vec_itr((void**)&itr, VEC_ITR_DOWN, 1);
+		}
 	}
 
 	emit_expr(get_child(__node, 1));
@@ -743,7 +757,7 @@ void emit_addrof(struct node *__node) {
 
 void emit_deref(struct node *__node) {
 	struct node *child = get_child(__node, 0);
-	if (child->kind == AST_INCR || child->kind == AST_DECR)
+	if (child->kind == OP_INCR || child->kind == OP_DECR)
 		emit_incr_or_decr(child, 1);
 	else emit_expr(child);
 
@@ -804,7 +818,7 @@ void emit_load_struct_ref(struct node *__node) {
 
 void emit_incr_or_decr(struct node *__node, mdl_u8_t __drefd) {
 	emit_load(__node->_type->kind, __node->_type->bcit, get_child(__node, 0)->off);
-	if (__node->kind == AST_INCR)
+	if (__node->kind == OP_INCR)
 		bci_emit_incr(__node->_type->bcit, get_rga_addr(__node->_type->bcit), 1, 0);
 	else
 		bci_emit_decr(__node->_type->bcit, get_rga_addr(__node->_type->bcit), 1, 0);
@@ -917,7 +931,7 @@ void emit_expr(struct node *__node) {
 	if (!__node) return;
 	printf("gen: node_kind: %s\n", node_kind_as_str(__node->kind));
 	switch(__node->kind) {
-		case AST_INCR: case AST_DECR:
+		case OP_INCR: case OP_DECR:
 			emit_incr_or_decr(__node, 0);
 		break;
 		case AST_EXTERN_CALL:
@@ -929,7 +943,7 @@ void emit_expr(struct node *__node) {
 		case AST_PRINT:
 			emit_print(__node);
 		break;
-		case AST_ASSIGN:
+		case OP_ASSIGN:
 			emit_assign(__node);
 		break;
 		case AST_LITERAL:

@@ -1,0 +1,11 @@
+struct pair {
+	void *p1;
+	void *p2;
+};
+
+void printf(u8_t *__s, ...) {
+	struct pair arg;
+	arg.p1 = __s;
+	arg.p2 = va_ptr(__s);
+	extern_call(4, &arg);
+}

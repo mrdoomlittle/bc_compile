@@ -114,7 +114,8 @@ int main(int __argc, char const *__argv[]) {
 		.dst_fpth = dst_fpth
 	};
 
-	bcc_init(&bcc, &inc_pths);
+	if (bcc_init(&bcc, &inc_pths) != BCC_SUCCESS) return 1;
 	bcc_run(&bcc);
 	bcc_de_init();
+	return 0;
 }

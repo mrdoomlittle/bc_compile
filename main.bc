@@ -1,35 +1,6 @@
-//# include "lib/alloc.bc"
-//# define hello exit;
+# include <stdio.bc>
+# include <string.bc>
 
-/*
-bca("print(bcit, addr, flags)");
-bca("assign(addr, val, bcit, flags)");
-bca("mov(bcit, dst_addr, src_addr, flags)");
-bca("nop(flags)");
-bca("incr(bcit, addr, bc, flags)");
-bca("decr(bcit, addr, bc, flags)");
+printf("%u\n", strlen("Hello"));
 
-bcit_w8, bcit_w16, bcit_w32, bcit_w64, bcit_addr
-rg_w8a, rg_w8b, rg_w8c, sp, bp
-*/
-// el, es
-/*
-bca_u8_t x = 21;
-bca("fld rg_w16a x");
-bca("dr bcit_w8 rg_w8a rg_w16a 0");
-bca("incr bcit_w8 rg_w8a 1 0");
-bca("fst x rg_w8a");
-
-print(x);
-*/
-
-# define hello \
-bca("fld rg_w16a x"); \
-bca("dr bcit_w8 rg_w8a rg_w16a 0"); \
-bca("incr bcit_w8 rg_w8a 1 0"); \
-bca("fst x rg_w8a");
-
-bca_u8_t x = 21;
-hello
-print(x);
 exit;

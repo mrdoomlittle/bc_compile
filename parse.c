@@ -576,14 +576,13 @@ void read_goto_stmt(struct node **__node) {
 }
 
 void read_return_stmt(struct node **__node) {
-	struct node *ret_val;
+	struct node *ret_val = NULL;
 	read_expr(&ret_val);
 
 	struct node *node;
 	ast_conv(&node, curr_ret_type, ret_val);
 
 	ast_return(__node, node);
-
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
@@ -746,7 +745,7 @@ void read_sizeof_operand(struct node **__node) {
 
 	struct type *t;
 	make_notype(&t, T_KIND_X16, 0);
-	ast_int_type(__node, t, &_type->size);
+	ast_int_type(__node, t, (mdl_u8_t*)&_type->size);
 
 	expect_token(TOK_KEYWORD, R_PAREN);
 }
@@ -906,17 +905,18 @@ void read_func_call(struct node **__node, struct node *__func) {
 		(*__node)->kind = AST_EXTERN_CALL;
 	} else {
 		ast_goto(&_goto, (void*)__func->p);
+		if (vec_blk_c(&__func->params) > 0 && vec_blk_c(&args) > 0) {
+			struct node **p1 = vec_begin(&__func->params);
+			struct node **p2 = vec_begin(&args);
 
-		struct node **p1 = vec_begin(&__func->params);
-		struct node **p2 = vec_begin(&args);
+			while(p1 != NULL) {
+				if ((*p2)->_type->bcit != (*p1)->_type->bcit) {
+					ast_conv(p2, bcit_to_type((*p1)->_type->bcit), *p2);
+				}
 
-		while(p1 != NULL) {
-			if ((*p2)->_type->bcit != (*p1)->_type->bcit) {
-				ast_conv(p2, bcit_to_type((*p1)->_type->bcit), *p2);
+				vec_itr((void**)&p1, VEC_ITR_DOWN, 1);
+				vec_itr((void**)&p2, VEC_ITR_DOWN, 1);
 			}
-
-			vec_itr((void**)&p1, VEC_ITR_DOWN, 1);
-			vec_itr((void**)&p2, VEC_ITR_DOWN, 1);
 		}
 
 		ast_func_call(__node, __func->_type->ret_type, __func, _goto, args);
@@ -1007,7 +1007,7 @@ void read_subscript_expr(struct node **__node, struct node *__lval) {
 	if (no->_type->bcit != type_ptr->bcit)
 		ast_conv(&no, type_ptr, no);
 
-	ast_binop(&add, __lval->_type, AST_ADD, __lval, no);
+	ast_binop(&add, __lval->_type, OP_ADD, __lval, no);
 
 	ast_uop(AST_DEREF, __node, add->_type->ptr, add);
 	expect_token(TOK_KEYWORD, R_BRACKET);
@@ -1026,20 +1026,20 @@ void read_postfix_expr(struct node **__node) {
 	} else if (next_token_is(PERIOD)) {
 		read_struct_field(__node, node);
 		return;
-	} else if (next_token_is(OP_ARROW)) {
+	} else if (next_token_is(ARROW)) {
 		printf("op:------------------------------------====: %u\n", node->_type->ptr->bcit);
 		print_node(node);
 		ast_uop(AST_DEREF, &node, node->_type->ptr, node);
 		read_struct_field(__node, node);
 		return;
-	} else if (next_token_is(OP_INCR) || next_token_is(OP_DECR)) {
+	} else if (next_token_is(INCR) || next_token_is(DECR)) {
 		struct token *tok;
 		get_back_token(&tok, 0);
 
-		if (is_keyword(tok, OP_INCR)) {
-			ast_uop(AST_INCR, __node, node->_type, node);
+		if (is_keyword(tok, INCR)) {
+			ast_uop(OP_INCR, __node, node->_type, node);
 		} else
-			ast_uop(AST_DECR, __node, node->_type, node);
+			ast_uop(OP_DECR, __node, node->_type, node);
 		return;
 	}
 
@@ -1095,11 +1095,11 @@ void read_add_expr(struct node **__node) {
 	read_cast_expr(__node);
 
 	mdl_u8_t kind;
-	if (next_token_is(OP_PLUS)) {
-		kind = OP_PLUS;
-	} else if (next_token_is(OP_MINUS)) {
-		kind = OP_MINUS;
-	} else return;
+	if (next_token_is(ADD))
+		kind = ADD;
+	else if (next_token_is(SUB))
+		kind = SUB;
+	else return;
 
 	struct type *_type = bcit_to_type((*__node)->_type->bcit);
 	struct node *l = *__node;
@@ -1114,20 +1114,28 @@ void read_add_expr(struct node **__node) {
 		ast_conv(&l, _type, l);
 	}
 
-	if (kind == OP_PLUS)
-		ast_binop(__node, l->_type, AST_ADD, l, r);
-	else if (kind == OP_MINUS)
-		ast_binop(__node, l->_type, AST_SUB, l, r);
+	if (kind == ADD)
+		ast_binop(__node, l->_type, OP_ADD, l, r);
+	else if (kind == SUB)
+		ast_binop(__node, l->_type, OP_SUB, l, r);
 }
 
-void read_eq_expr(struct node **__node) {
+void read_eq_or_rela_expr(struct node **__node) {
 	read_add_expr(__node);
 
 	mdl_u8_t kind;
-	if (next_token_is(OP_EQ))
-		kind = AST_OP_EQ;
-	else if (next_token_is(OP_NEQ))
-		kind = AST_OP_NEQ;
+	if (next_token_is(EQEQ))
+		kind = OP_EQ;
+	else if (next_token_is(NEQ))
+		kind = OP_NEQ;
+	else if (next_token_is(GT))
+		kind = OP_GT;
+	else if (next_token_is(LT))
+		kind = OP_LT;
+	else if (next_token_is(GEQ))
+		kind = OP_GEQ;
+	else if (next_token_is(LEQ))
+		kind = OP_LEQ;
 	else return;
 
 	struct type *_type = bcit_to_type((*__node)->_type->bcit);
@@ -1142,25 +1150,25 @@ void read_eq_expr(struct node **__node) {
 		ast_conv(&l, _type, l);
 	}
 
-	ast_binop(__node, _type, kind, r, l);
+	ast_binop(__node, _type, kind, l, r);
 }
 
 bcc_err_t read_assign_expr(struct node **__node) {
 	struct node *l = NULL;
-    read_eq_expr(&l);
+    read_eq_or_rela_expr(&l);
 //	printf("---------------------------------------------------------> %s\n", node == NULL? "NULL":" ");
 
 	struct token *tok;
 	read_token(&tok, 1);
 
-	if (is_keyword(tok, OP_ASSIGN)) {
+	if (is_keyword(tok, EQ)) {
 		struct node *r = NULL;
 		read_assign_expr(&r);
 
 		if (l->_type->bcit != r->_type->bcit)
 			ast_conv(&r, l->_type, r);
 
-		ast_binop(__node, l->_type, AST_ASSIGN, l, r);
+		ast_binop(__node, l->_type, OP_ASSIGN, l, r);
 		return 0;
 	}
 
@@ -1330,7 +1338,7 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 
 		printf("name ----- %s\n", name);
 
-		if(next_token_is(OP_ASSIGN))
+		if(next_token_is(EQ))
 			read_decl_init(&init, _type);
 
 		vec_push(__vec, (void**)&node, sizeof(struct node*));
@@ -1385,6 +1393,7 @@ void read_funcdef(struct node **__node) {
 
 	ast_func(__node, name, _type, body, params, label);
 	map_put(&global_env, (mdl_u8_t const*)name, strlen(name), *__node);
+
 	local_env = NULL;
 	map_de_init(&env);
 }
@@ -1403,7 +1412,7 @@ mdl_u8_t is_funcdef() {
 		*_tok = tok;
 
 		if (is_keyword(tok, SEMICOLON)) break;
-		if (is_keyword(tok, OP_ASSIGN)) break;
+		if (is_keyword(tok, EQ)) break;
 
 		if (is_keyword(tok, L_PAREN)) {
 			func = 1;
