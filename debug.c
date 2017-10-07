@@ -1,24 +1,30 @@
 # include "bcc.h"
+# include <stdarg.h>
 char const* node_kind_as_str(mdl_u8_t);
 
-void print_padding(mdl_uint_t __amount) {
-	for (mdl_uint_t o = 0; o != __amount; o++) printf("   ");}
-
 mdl_uint_t padding = 0;
+void static debug_print(char const *__s, ...) {
+	va_list args;
+	va_start(args, __s);
+
+	mdl_uint_t i = 0;
+	for (;i != padding; i++)
+		fprintf(stdout, "	", padding);
+
+	vfprintf(stdout, __s, args);
+	va_end(args);
+}
+
+void print_padding(mdl_uint_t __amount) {
+	for (mdl_uint_t o = 0; o != __amount; o++) printf("");}
+
 void print_token(struct token *__tok) {
 	if (__tok == NULL) return;
 
-	print_padding(padding);
-	printf("token info:\n");
-
-	print_padding(padding);
-	printf("	kind: %s\n", token_kind_as_str(__tok->kind));
-
-	print_padding(padding);
-	printf("	id: %s\n", token_id_as_str(__tok->id));
-
-	print_padding(padding);
-	printf("	val: %s\n", (char*)__tok->p);
+	debug_print("token info:\n");
+	debug_print("	kind: %s\n", token_kind_as_str(__tok->kind));
+	debug_print("	id: %s\n", token_id_as_str(__tok->id));
+	debug_print("	val: %s\n", (char*)__tok->p);
 }
 
 mdl_u8_t trunk = 0;
@@ -27,28 +33,27 @@ void print_node(struct node *__node) {
 	mdl_u8_t is_trunk = 0;
 	if (!trunk) {is_trunk = 1;trunk = 1;}
 	if (__node == NULL) return;
-	print_padding(padding);
-	printf("node_depth: %u\n", depth);
-	print_padding(padding);
-	printf("node_kind: %s\n", node_kind_as_str(__node->kind));
+	debug_print("node_depth: %u\n", depth);
+	debug_print("node_kind: %s\n", node_kind_as_str(__node->kind));
 
-	if (__node->kind == AST_DEREF) {
-		print_padding(padding);
-		printf("ptr type: %u, type: %u\n", __node->_type->bcit, (*__node->child_buff)->_type->bcit);
-	}
+	if (__node->kind == AST_DEREF)
+		debug_print("ptr type: %u, type: %u\n", __node->_type->bcit, (*__node->child_buff)->_type->bcit);
 
-	print_padding(padding);
-	printf("vec contents: \n");
+	debug_print("vec contents: \n");
 	if (__node->kind == AST_COMPOUND_STMT) {
+		debug_print("args: \n");
 		padding++;
-		for (struct node **itr = (struct node**)vec_begin(&__node->_vec); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1))
+		struct node **itr = (struct node**)vec_begin(&__node->_vec);
+		for (; itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1))
 			if (*itr != NULL) print_node(*itr);
 		padding--;
 	}
 
 	if (__node->kind == AST_FUNC) {
+		debug_print("params: \n");
 		padding++;
-		for (struct node **itr = (struct node**)vec_begin(&__node->params); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1))
+		struct node **itr = (struct node**)vec_begin(&__node->params);
+		for (; itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1))
 			if (*itr != NULL) print_node(*itr);
 		padding--;
 	}
@@ -60,21 +65,19 @@ void print_node(struct node *__node) {
 		padding--;
 	}
 
-	print_padding(padding);
-	printf("node l: %s\n", __node->l == NULL? "null":" ");
+	debug_print("node l: %s\n", __node->l == NULL? "null":" ");
 
 	padding++;
 	if (__node->l != NULL) print_node(__node->l);
 	if (__node->r != NULL) print_node(__node->r);
 	padding--;
 
-	print_padding(padding);
-	printf("node r: %s\n", __node->r == NULL? "null":" ");
+	debug_print("node r: %s\n", __node->r == NULL? "null":" ");
 
-	print_padding(padding);
 	padding = ++depth;
-	printf("\x1B[32mchiled nodes:\x1B[0m\n");
-	for (struct node **itr = __node->child_buff; itr != __node->child_itr; itr++)
+	debug_print("\x1B[32mchiled nodes:\x1B[0m\n");
+	struct node **itr = __node->child_buff;
+	for (; itr != __node->child_itr; itr++)
 		if (*itr != NULL) print_node(*itr);
 
 	if (trunk && is_trunk) {padding = 0;trunk = 0;depth = 0;}
@@ -100,6 +103,10 @@ char const* node_kind_as_str(mdl_u8_t __kind) {
 			return "op add";
 		case OP_SUB:
 			return "op sub";
+		case OP_MUL:
+			return "op mul";
+		case OP_DIV:
+			return "op div";
 		case OP_ASSIGN:
 			return "op assign";
 		case AST_IF:
@@ -198,10 +205,10 @@ char const* token_id_as_str(mdl_u8_t __id) {
 			return "expression";
 		case K_EXIT:
 			return "program exit";
-		case ADD:
-			return "add";
-		case SUB:
-			return "sub";
+		case PLUS:
+			return "plus";
+		case MINUS:
+			return "minus";
 		case GT:
 			return "gt";
 		case LT:

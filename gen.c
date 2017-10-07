@@ -195,23 +195,23 @@ void decr_stack_ptr(bci_addr_t __bc) {
 	bci_emit_decr(_bcit_addr, RG_SP, __bc, 0);
 }
 
-struct vec labels;
+struct map labels;
 struct vec gotos;
 
-struct label_t {
+typedef struct {
 	char *name;
 	bci_addr_t addr;
-};
+} label_t;
 
-struct goto_t {
+typedef struct {
 	char *name;
 	bci_addr_t *jmp_addr;
-};
+} goto_t;
 
 bci_addr_t *sp, *bp;
 bcc_err_t gen_init(mdl_uint_t __bc_buff_size) {
 	buff_init(&bc_buff, sizeof(mdl_u8_t), __bc_buff_size);
-	// note im using the word register wong as theres no other word i cound think of to use
+
 	incr_stack_addr(bcit_sizeof(_bcit_8l)*3); // 8bit registers
 	incr_stack_addr(bcit_sizeof(_bcit_16l)*6); // 16bit registers
 	incr_stack_addr(bcit_sizeof(_bcit_32l)*3); // 32bit registers
@@ -220,7 +220,7 @@ bcc_err_t gen_init(mdl_uint_t __bc_buff_size) {
 	bci_emit_assign(RG_BP, (mdl_u8_t**)&bp, _bcit_addr, 0);
 	bci_emit_assign(RG_SP, (mdl_u8_t**)&sp, _bcit_addr, 0);
 	vec_init(&gotos);
-	vec_init(&labels);
+	map_init(&labels);
 	*bp = base_addr = stack_addr;
 }
 
@@ -336,11 +336,16 @@ void static emit_binop(struct node *__node) {
 		case OP_SUB:
 			emit_aop(__node, _bci_aop_sub);
 		break;
+		case OP_MUL:
+			emit_aop(__node, _bci_aop_mul);
+		break;
+		case OP_DIV:
+			emit_aop(__node, _bci_aop_div);
+		break;
 		case OP_EQ: case OP_NEQ: case OP_GT: case OP_LT: case OP_GEQ: case OP_LEQ:
 			emit_cmp(__node);
 		break;
 		default:
-			printf("--------------------------------------------------------------\n");
 			return;
 	}
 /*
@@ -378,25 +383,26 @@ void emit_assign_deref(struct type *__val, struct node *__node, mdl_uint_t __off
 	mdl_u8_t ptr_bcit = __node->_type->bcit;
 	mdl_u8_t val_bcit = __val->bcit;
 
-	bci_emit_mov(val_bcit, get_rgc_addr(val_bcit), get_rga_addr(val_bcit), 0);
+	stack_push(val_bcit);
+
 	emit_expr(__node);
 
-	bci_addr_t ptr_addr = get_rga_addr(ptr_bcit);
+	bci_addr_t ptr_addr = get_rgc_addr(ptr_bcit);
+	bci_emit_mov(ptr_bcit, ptr_addr, get_rga_addr(ptr_bcit), 0);
+	stack_pop(val_bcit);
 
 	if (__off != 0)
 		bci_emit_aop(_bci_aop_add, ptr_bcit, &ptr_addr, &__off, ptr_addr, _bcii_aop_fr_pm);
 
-	bci_emit_mov(val_bcit, ptr_addr, get_rgc_addr(val_bcit), _bcii_mov_fdr_da);
+	bci_emit_mov(val_bcit, ptr_addr, get_rga_addr(val_bcit), _bcii_mov_fdr_da);
 }
 
 void emit_assign_struct_ref(struct node *__node) {
 	struct node *var = get_child(__node, 0);
-	printf("))))))))))))))))))))))))))))))))))))))))))))))))))offset: %u\n", __node->_type->offset+var->off);
 
 	switch(var->kind) {
 		case AST_DEREF:
 			emit_assign_deref(__node->_type, get_child(var, 0), __node->_type->offset);
-			printf("-----------------------------------ptr_bcit: %u, offset: %u\n", var->_type->bcit, __node->_type->offset);
 		break;
 		case AST_VAR:
 			emit_save(__node->_type->bcit, __node->_type->offset+var->off);
@@ -405,7 +411,6 @@ void emit_assign_struct_ref(struct node *__node) {
 }
 
 void emit_store(struct node *__node) {
-	printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 	print_node(__node);
 	switch(__node->kind) {
 		case AST_STRUCT_REF:
@@ -426,14 +431,9 @@ void static emit_decl_init(struct node *__init, bci_addr_t __off, mdl_u8_t __bci
 		mdl_uint_t blk_off = 0;
 		for (struct node **itr = (struct node**)vec_begin(&__init->_vec); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 			emit_expr(*itr);
-		//	printf("ooooooooooooooooooooooooooooooooooooooooooooooooooooooooo\n");
-//			mdl_u8_t *v;
-//			bci_emit_assign(__off, &v, _bcit_8l, 0);
-//			*v = 200;
 			emit_load_conv(__bcit, (*itr)->_type->bcit);
 			emit_save(__bcit, __off+((blk_off++)*bcit_sizeof(__bcit)));
 		}
-
 		return;
 	}
 
@@ -453,8 +453,6 @@ void static emit_decl(struct node *__node) {
 	if (init != NULL) {
 		emit_decl_init(init, var->off, init->_type->kind == T_KIND_ARRAY? var->_type->ptr->bcit:var->_type->bcit);
 	}
-
-//	emit_expr(var);
 }
 
 void static emit_exit() {
@@ -509,10 +507,8 @@ void emit_save(mdl_u8_t __bcit, bci_addr_t __dst_off) {
 }
 
 void emit_load_conv(mdl_u8_t __to_bcit, mdl_u8_t __from_bcit) {
-	if (__to_bcit != __from_bcit) {
+	if (__to_bcit != __from_bcit)
 		bci_emit_conv(__to_bcit, __from_bcit, get_rga_addr(__to_bcit), get_rga_addr(__from_bcit), 0);
-		//bci_emit_mov(__to_bcit, __from_bcit, get_rga_addr(__to_bcit), get_rga_addr(__from_bcit), 0);
-	}
 }
 
 void emit_assign(struct node *__node) {
@@ -526,7 +522,6 @@ void emit_assign(struct node *__node) {
 	mdl_u8_t r_bcit = r->_type->bcit;
 	emit_load_conv(l_bcit, r_bcit);
 	emit_store(l);
-//	printf("----------------------------> %u\n", r->kind == AST_VAR);
 }
 
 mdl_u8_t size_to_bcit(mdl_u8_t __size) {
@@ -603,9 +598,8 @@ void emit_while(struct node *__node) {
 }
 
 void emit_label(struct node *__node) {
-	struct label_t *label;
-
-	vec_push(&labels, (void**)&label, sizeof(struct label_t));
+	label_t *label = (label_t*)malloc(sizeof(label_t));
+	map_put(&labels, (mdl_u8_t const*)__node->p, strlen((char*)__node->p), label);
 	label->addr = bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff);
 	label->name = __node->p;
 	printf("label: %s:\n", (char*)__node->p);
@@ -613,8 +607,8 @@ void emit_label(struct node *__node) {
 
 void emit_goto(struct node *__node) {
 	printf("emit goto\n");
-	struct goto_t *_goto;
-	vec_push(&gotos, (void**)&_goto, sizeof(struct goto_t));
+	goto_t *_goto;
+	vec_push(&gotos, (void**)&_goto, sizeof(goto_t));
 
 	bci_emit_assign(RG_16B, (mdl_u8_t**)&_goto->jmp_addr, _bcit_addr, 0);
 	bci_emit_jmp(RG_16B);
@@ -623,9 +617,8 @@ void emit_goto(struct node *__node) {
 }
 
 void emit_compound_stmt(struct node *__node) {
-	for (struct node **itr = (struct node**)vec_begin(&__node->_vec); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
-		emit_expr(*itr);
-	}
+	struct node **itr = (struct node**)vec_begin(&__node->_vec);
+	for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) emit_expr(*itr);
 }
 
 void emit_func(struct node *__node) {
@@ -687,7 +680,6 @@ void emit_func_call(struct node *__node) {
 			emit_expr(*itr);
 			mdl_u8_t bcit = (*itr)->_type->bcit;
 			stack_push((*itr)->_type->bcit);
-			printf("00000000000000000000000000000000000000000000000000000000000000000000\n");
 		}
 	}
 
@@ -703,7 +695,6 @@ void emit_func_call(struct node *__node) {
 
 	if (vec_blk_c(&__node->args) > 0) {
 		while(itr != NULL) {
-			printf("=======================================================; %u\n", va_size);
 			mdl_u8_t bcit = (*itr)->_type->bcit;
 			mdl_u64_t *val;
 			bci_emit_assign(addr, (mdl_u8_t**)&val, _bcit_64l, 0);
@@ -796,8 +787,6 @@ void emit_cast(struct node *__node) {
 void emit_load_struct_ref(struct node *__node) {
 	struct node *var = get_child(__node, 0);
 
-//	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %u\n", get_child(var, 0)->off+__node->_type->offset);
-
 	switch(var->kind) {
 		case AST_DEREF:
 			emit_expr(get_child(var, 0));
@@ -812,8 +801,6 @@ void emit_load_struct_ref(struct node *__node) {
 			emit_load(__node->_type->kind, __node->_type->bcit, __node->_type->offset+var->off);
 		break;
 	}
-
-	printf(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;offset: %u\n", __node->_type->offset+var->off);
 }
 
 void emit_incr_or_decr(struct node *__node, mdl_u8_t __drefd) {
@@ -827,13 +814,8 @@ void emit_incr_or_decr(struct node *__node, mdl_u8_t __drefd) {
 
 void emit_va_ptr(struct node *__node) {
 	struct node *arg = get_child(__node, 0);
-	bci_addr_t addr = (base_addr+arg->off)+arg->_type->size;////bcit_sizeof(_bcit_addr);//__node->_type->size;
-//	bci_emit_print(_bcit_addr, addr);
-//	bci_emit_dr(_bcit_addr, addr, get_rga_addr(_bcit_addr));
+	bci_addr_t addr = (base_addr+arg->off)+arg->_type->size;
 	bci_emit_mov(_bcit_addr, get_rga_addr(_bcit_addr), addr, 0);
-
-//	bci_emit_assign(get_rga_addr(_bcit_addr), (mdl_u8_t**)&addr, _bcit_addr, 0);
-
 }
 
 void emit_bca_print(struct bca_blk *__blk) {
@@ -1005,16 +987,11 @@ void emit_expr(struct node *__node) {
 	}
 }
 
-void lable_lookup(struct label_t **__label, char *__name) {
-	for (struct label_t *itr = (struct label_t*)vec_begin(&labels); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
-		if (!strcmp(itr->name, __name)) {*__label = itr;return;}
-	}
-}
-
 void link_gotos() {
-	for (struct goto_t *itr = (struct goto_t*)vec_begin(&gotos); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
-		struct label_t *label = NULL;
-		lable_lookup(&label, itr->name);
+	goto_t *itr = (goto_t*)vec_begin(&gotos);
+	for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
+		label_t *label;
+		map_get(&labels, (mdl_u8_t const*)itr->name, strlen(itr->name), (void**)&label);
 
 		if (label != NULL) {
 			printf("heuhuehehihehfheihfuehfiufehfiufheuifuheiufhj --> %u\n", label->addr);
@@ -1025,13 +1002,12 @@ void link_gotos() {
 
 bcc_err_t gen(struct node *__node) {
 	if (__node == NULL) return BCC_SUCCESS;
-
-	print_node(__node);
 	emit_expr(__node);
 
-	for (mdl_u8_t *itr = (mdl_u8_t*)buff_begin(&bc_buff); itr != bcb_itr; itr++) {
-		mdl_u8_t *t = itr+8;
-		for (;itr != t; itr++) {
+	mdl_u8_t *itr = (mdl_u8_t*)buff_begin(&bc_buff);
+	for (;itr != bcb_itr; itr++) {
+		mdl_u8_t *end = itr+8;
+		for (;itr != end; itr++) {
 			if (itr >= bcb_itr) {printf("bcb_size: %u\n", bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff));return BCC_SUCCESS;}
 			printf("%x,	", *itr);
 		}

@@ -195,7 +195,7 @@ void static _read_token(struct token *__tok) {
 				make_keyword(__tok, INCR);
 				incr_src_itr();
 			} else
-				make_keyword(__tok, ADD);
+				make_keyword(__tok, PLUS);
 			incr_src_itr();
 		break;
 		case '-':
@@ -206,7 +206,7 @@ void static _read_token(struct token *__tok) {
 				make_keyword(__tok, DECR);
 				incr_src_itr();
 			} else
-				make_keyword(__tok, SUB);
+				make_keyword(__tok, MINUS);
 			incr_src_itr();
 		break;
 		case '[':
@@ -246,7 +246,7 @@ void static _read_token(struct token *__tok) {
 			incr_src_itr();
 		break;
 		case '#':
-			make_keyword(__tok, NOSIGN);
+			make_keyword(__tok, HASH);
 			incr_src_itr();
 		break;
 		case '*':
@@ -282,6 +282,10 @@ void static _read_token(struct token *__tok) {
 		break;
 		case '\\':
 			make_keyword(__tok, BACKSLASH);
+			incr_src_itr();
+		break;
+		case '/':
+			make_keyword(__tok, SLASH);
 			incr_src_itr();
 		break;
 		case '\n': __tok->kind=TOK_NEWLINE; incr_src_itr(); break;

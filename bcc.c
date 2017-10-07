@@ -105,7 +105,6 @@ mdl_uint_t str_to_int(char *__str) {
 
 		if (no_unit != 1) no_unit = no_unit/10;
 	}
-
 	return no;
 }
 
@@ -160,9 +159,9 @@ void read_include() {
 	buff_push(&file_buff, &file);
 
 	if (!std) {
-		if (!access(fpth, R_OK)) {
+		if (!access(fpth, R_OK))
 			open_src_file(fpth);
-		} else
+		else
 			fprintf(stderr, "bcc, don't have access to file '%s', errno: %d\n", fpth, errno);
 		return;
 	}
@@ -205,7 +204,6 @@ void read_define() {
 		read_token(&tok, 0);
 	}
 
-	printf("val-----> %s\n", tok->p);
 	map_put(&macros, (char*)name->p, strlen((char*)name->p), (void*)toks);
 }
 
@@ -218,7 +216,6 @@ void read_macro() {
 	if (!strcmp((char*)tok->p, "include")) read_include();
 	if (!strcmp((char*)tok->p, "define")) read_define();
 }
-
 
 struct token *tmp_tok;
 struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
@@ -248,12 +245,6 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 				}
 
 				*__tok = tok;
-		//		printf("--------------=:\n");
-		//		print_token(tok);
-		//		read_token(&tok, 1);
-		//		printf("--------------=:\n");
-		//		print_token(tok);
-		//		while(1);
 				break;
 			}
 		}
@@ -310,8 +301,10 @@ void read_typedef() {
 
 	struct type_def *_type_def;
 	vec_push(&type_defs, (void**)&_type_def, sizeof(struct type_def));
-	_type_def->type = type;
-	_type_def->name = (char*)name->p;
+	*_type_def = (struct type_def) {
+		.type = type,
+		.name = (char*)name->p
+	};
 
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
@@ -359,10 +352,10 @@ mdl_u8_t maybe_keyword(struct token *__tok) {
 	else if (is_ident(__tok, "va_ptr", 0))
 		to_keyword(__tok,  K_VA_PTR);
 	else {
-		for (struct type_def *itr = (struct type_def*)vec_begin(&type_defs); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
-			if (!strcmp(itr->name, (char*)__tok->p)) {
+		struct type_def *itr = (struct type_def*)vec_begin(&type_defs);
+		for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
+			if (!strcmp(itr->name, (char*)__tok->p))
 				to_keyword(__tok, itr->type->id);
-			}
 		}
 		return 0;
 	}
@@ -396,16 +389,15 @@ bcc_err_t bcc_run(struct bcc *__bcc) {
 		printf("loading file: %s\n", file.file.path);
 
 		src_file = file.file;
-
 		src_buff = file.p;
-
 		src_itr = file.itr;
 
 		printf("current point: %u,%u\n", src_itr-src_buff, fsize(&src_file));
 		goto _next_file;
 	}
 
-	for (struct node **itr = (struct node**)vec_begin(&ni); itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
+	struct node **itr = (struct node**)vec_begin(&ni);
+	for (; itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 		if (gen(*itr) != BCC_SUCCESS) break;
 		print_node(*itr);
 	}
@@ -414,8 +406,8 @@ bcc_err_t bcc_run(struct bcc *__bcc) {
 
 	struct file_t file = {
 		.path = __bcc->dst_fpth,
-		.flags = O_WRONLY | O_CREAT,
-		.mode = S_IRWXU | S_IRWXG | S_IRWXO
+		.flags = O_WRONLY|O_CREAT,
+		.mode = S_IRWXU|S_IRWXG|S_IRWXO
 	};
 
 	open_file(&file);

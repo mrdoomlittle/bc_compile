@@ -291,7 +291,7 @@ void build_type(struct type **__type, struct type *__tmpl) {
 }
 
 void make_array_type(struct type **__type, struct type *__base_type, mdl_uint_t __len) {
-	build_type(__type, &(struct type){.kind=T_KIND_ARRAY, .bcit=_bcit_addr, .ptr=__base_type, .size=(__base_type->size*__len), .len=__len});
+	build_type(__type, &(struct type){.kind=T_KIND_ARRAY, .bcit=_bcit_addr, .ptr=__base_type, .size=(__len*__base_type->size), .len=__len});
 }
 
 void make_struct_type(struct type **__type, struct map *__fields, mdl_uint_t __size) {
@@ -325,8 +325,7 @@ void read_struct_fields(struct vec *__vec) {
 	vec_init(__vec);
 
 	expect_token(TOK_KEYWORD, L_BRACE);
-	if (next_token_is(R_BRACE))
-		return;
+	if (next_token_is(R_BRACE)) return;
 
 	struct type *base_type;
 	struct type *_type;
@@ -590,8 +589,9 @@ void read_return_stmt(struct node **__node) {
 	struct node *ret_val = NULL;
 	read_expr(&ret_val);
 
-	struct node *node;
-	ast_conv(&node, curr_ret_type, ret_val);
+	struct node *node = ret_val;
+	if (ret_val->_type->bcit != curr_ret_type->bcit)
+		ast_conv(&node, curr_ret_type, ret_val);
 
 	ast_return(__node, node);
 	expect_token(TOK_KEYWORD, SEMICOLON);
@@ -708,29 +708,29 @@ struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 		struct bca_blk *blk;
 		vec_push(&_vec, (void**)&blk, sizeof(struct bca_blk));
 
-		if (!strcmp((char*)tok->p, "print")) {
+		if (!strcmp((char*)tok->p, "print"))
 			bca_read_print_stmt(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "mov")) {
+		else if (!strcmp((char*)tok->p, "mov"))
 			bca_read_mov_stmt(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "assign")) {
+		else if (!strcmp((char*)tok->p, "assign"))
 			bca_read_assign_stmt(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "nop")) {
+		else if (!strcmp((char*)tok->p, "nop"))
 			bca_read_nop_stmt(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "incr")) {
+		else if (!strcmp((char*)tok->p, "incr"))
 			bca_read_incr_or_decr_stmt(blk, &itr, BCA_INCR);
-		} else if (!strcmp((char*)tok->p, "decr")) {
+		else if (!strcmp((char*)tok->p, "decr"))
 			bca_read_incr_or_decr_stmt(blk, &itr, BCA_DECR);
-		} else if (!strcmp((char*)tok->p, "eeb_init")) {
+		else if (!strcmp((char*)tok->p, "eeb_init"))
 			bca_read_eeb_init(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "eeb_put")) {
+		else if (!strcmp((char*)tok->p, "eeb_put"))
 			bca_read_eeb_put(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "fld")) {
+		else if (!strcmp((char*)tok->p, "fld"))
 			bca_read_fld(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "fst")) {
+		else if (!strcmp((char*)tok->p, "fst"))
 			bca_read_fst(blk, &itr);
-		} else if (!strcmp((char*)tok->p, "dr")) {
+		else if (!strcmp((char*)tok->p, "dr"))
 			bca_read_dr_stmt(blk, &itr);
-		} else
+		else
 			itr++;
 	}
 	return _vec;
@@ -823,7 +823,7 @@ void read_no(struct node **__node, char *__s) {
 }
 
 void read_primary_expr(struct node**);
-void read_add_expr(struct node**);
+void read_additive_expr(struct node**);
 
 void read_func_param(char **__name, struct type **__type) {
 	struct token *tok;
@@ -1022,6 +1022,8 @@ void read_subscript_expr(struct node **__node, struct node *__lval) {
 
 	ast_uop(AST_DEREF, __node, add->_type->ptr, add);
 	expect_token(TOK_KEYWORD, R_BRACKET);
+	if (next_token_is(PERIOD))
+		read_struct_field(__node, *__node);
 }
 
 void read_postfix_expr(struct node **__node) {
@@ -1047,9 +1049,9 @@ void read_postfix_expr(struct node **__node) {
 		struct token *tok;
 		get_back_token(&tok, 0);
 
-		if (is_keyword(tok, INCR)) {
+		if (is_keyword(tok, INCR))
 			ast_uop(OP_INCR, __node, node->_type, node);
-		} else
+		else
 			ast_uop(OP_DECR, __node, node->_type, node);
 		return;
 	}
@@ -1102,66 +1104,85 @@ void read_cast_expr(struct node **__node) {
 	read_postfix_expr(__node);
 }
 
-void read_add_expr(struct node **__node) {
+struct type* usual_arith_conv(struct type *__l, struct type *__r) {
+	struct type *_type = bcit_to_type(__l->bcit);
+	if (bcit_sizeof(__l->bcit) > bcit_sizeof(__r->bcit))
+		_type = bcit_to_type(__l->bcit);
+	else if (bcit_sizeof(__l->bcit) < bcit_sizeof(__r->bcit))
+		_type = bcit_to_type(__r->bcit);
+	return _type;
+}
+
+void same_arith_conv(struct node **__node, struct type *__type) {
+	if ((*__node)->_type->bcit != __type->bcit)
+		ast_conv(__node, __type, *__node);
+}
+
+void read_multiplicative_expr(struct node **__node) {
 	read_cast_expr(__node);
 
-	mdl_u8_t kind;
-	if (next_token_is(ADD))
-		kind = ADD;
-	else if (next_token_is(SUB))
-		kind = SUB;
-	else return;
+	mdl_u8_t op;
+	if (next_token_is(ASTERISK))
+		op = OP_MUL;
+	else
+		return;
 
-	struct type *_type = bcit_to_type((*__node)->_type->bcit);
-	struct node *l = *__node;
-	struct node *r = NULL;
+	struct node *l = *__node, *r = NULL;
+	read_multiplicative_expr(&r);
+	struct type *_type = usual_arith_conv(l->_type, r->_type);
+	same_arith_conv(&l, _type);
+	same_arith_conv(&r, _type);
 
-	read_add_expr(&r);
-	if (bcit_sizeof(l->_type->bcit) > bcit_sizeof(r->_type->bcit)) {
-		_type = bcit_to_type(l->_type->bcit);
-		ast_conv(&r, _type, r);
-	} else if (bcit_sizeof(r->_type->bcit) > bcit_sizeof(l->_type->bcit)) {
-		_type = bcit_to_type(r->_type->bcit);
-		ast_conv(&l, _type, l);
-	}
+	ast_binop(__node, l->_type, op, l, r);
+}
 
-	if (kind == ADD)
-		ast_binop(__node, l->_type, OP_ADD, l, r);
-	else if (kind == SUB)
-		ast_binop(__node, l->_type, OP_SUB, l, r);
+void read_additive_expr(struct node **__node) {
+	read_multiplicative_expr(__node);
+
+	mdl_u8_t op;
+	if (next_token_is(PLUS))
+		op = OP_ADD;
+	else if (next_token_is(MINUS))
+		op = OP_SUB;
+	else
+		return;
+
+	struct node *l = *__node, *r = NULL;
+	read_additive_expr(&r);
+
+	struct type *_type = usual_arith_conv(l->_type, r->_type);
+	same_arith_conv(&l, _type);
+	same_arith_conv(&r, _type);
+
+	ast_binop(__node, l->_type, op, l, r);
 }
 
 void read_eq_or_rela_expr(struct node **__node) {
-	read_add_expr(__node);
+	read_additive_expr(__node);
 
-	mdl_u8_t kind;
+	mdl_u8_t op;
 	if (next_token_is(EQEQ))
-		kind = OP_EQ;
+		op = OP_EQ;
 	else if (next_token_is(NEQ))
-		kind = OP_NEQ;
+		op = OP_NEQ;
 	else if (next_token_is(GT))
-		kind = OP_GT;
+		op = OP_GT;
 	else if (next_token_is(LT))
-		kind = OP_LT;
+		op = OP_LT;
 	else if (next_token_is(GEQ))
-		kind = OP_GEQ;
+		op = OP_GEQ;
 	else if (next_token_is(LEQ))
-		kind = OP_LEQ;
+		op = OP_LEQ;
 	else return;
 
-	struct type *_type = bcit_to_type((*__node)->_type->bcit);
-	struct node *l = *__node;
-	struct node *r = NULL;
+	struct node *l = *__node, *r = NULL;
 	read_expr(&r);
-	if (bcit_sizeof(l->_type->bcit) > bcit_sizeof(r->_type->bcit)) {
-		_type = bcit_to_type(l->_type->bcit);
-		ast_conv(&r, _type, r);
-	} else if (bcit_sizeof(r->_type->bcit) > bcit_sizeof(l->_type->bcit)) {
-		_type = bcit_to_type(r->_type->bcit);
-		ast_conv(&l, _type, l);
-	}
 
-	ast_binop(__node, _type, kind, l, r);
+	struct type *_type = usual_arith_conv(l->_type, r->_type);
+	same_arith_conv(&l, _type);
+	same_arith_conv(&r, _type);
+
+	ast_binop(__node, _type, op, l, r);
 }
 
 bcc_err_t read_assign_expr(struct node **__node) {
