@@ -21,21 +21,21 @@ enum {
 	TOK_STR
 };
 
-# define RG_W8A 0
-# define RG_W8B 1
-# define RG_W8C 2
+# define RG_8A 0
+# define RG_8B 1
+# define RG_8C 2
 
-# define RG_W16A 3
-# define RG_W16B 5
-# define RG_W16C 7
+# define RG_16A 3
+# define RG_16B 5
+# define RG_16C 7
 
-# define RG_W32A 9
-# define RG_W32B 13
-# define RG_W32C 17
+# define RG_32A 9
+# define RG_32B 13
+# define RG_32C 17
 
-# define RG_W64A 21
-# define RG_W64B 29
-# define RG_W64C 37
+# define RG_64A 21
+# define RG_64B 29
+# define RG_64C 37
 
 # define RG_RET_ADDR 45
 # define RG_SP 47

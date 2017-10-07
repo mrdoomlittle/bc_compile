@@ -1,6 +1,6 @@
 # include <stdio.bc>
 # include <string.bc>
 
-printf("%u\n", strlen("Hello"));
+printf("-> %u\n", strlen("Hello"));
 
 exit;

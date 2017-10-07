@@ -3,10 +3,10 @@ struct buff static node_buff;
 struct node *node_itr;
 
 struct type *type_void = &(struct type){.bcit=_bcit_void, .kind=T_KIND_VOID, .size=0, .flags=0};
-struct type *type_w8 = &(struct type){.bcit=_bcit_w8, .kind=T_KIND_X8, .size=1, .flags=UNSIGNED};
-struct type *type_w16 = &(struct type){.bcit=_bcit_w16, .kind=T_KIND_X16, .size=2, .flags=UNSIGNED};
-struct type *type_w32 = &(struct type){.bcit=_bcit_w32, .kind=T_KIND_X32, .size=4, .flags=UNSIGNED};
-struct type *type_w64 = &(struct type){.bcit=_bcit_w64, .kind=T_KIND_X64, .size=8, .flags=UNSIGNED};
+struct type *type_8l = &(struct type){.bcit=_bcit_8l, .kind=T_KIND_X8, .size=1, .flags=UNSIGNED};
+struct type *type_16l = &(struct type){.bcit=_bcit_16l, .kind=T_KIND_X16, .size=2, .flags=UNSIGNED};
+struct type *type_32l = &(struct type){.bcit=_bcit_32l, .kind=T_KIND_X32, .size=4, .flags=UNSIGNED};
+struct type *type_64l = &(struct type){.bcit=_bcit_64l, .kind=T_KIND_X64, .size=8, .flags=UNSIGNED};
 struct type *type_ptr = &(struct type){.bcit=_bcit_addr, .kind=T_KIND_PTR, .size=2, .flags=UNSIGNED};
 
 struct map static global_env;
@@ -82,16 +82,27 @@ void bca_env_add_var_int(char *__name, mdl_uint_t __val) {
 
 void bca_init() {
 	map_init(&bca_env);
-	bca_env_add_var_int("bcit_w8", _bcit_w8);
-	bca_env_add_var_int("bcit_w16", _bcit_w16);
-	bca_env_add_var_int("bcit_w32", _bcit_w32);
-	bca_env_add_var_int("bcit_w64", _bcit_w64);
+	bca_env_add_var_int("bcit_8l", _bcit_8l);
+	bca_env_add_var_int("bcit_16l", _bcit_16l);
+	bca_env_add_var_int("bcit_32l", _bcit_32l);
+	bca_env_add_var_int("bcit_64l", _bcit_64l);
 	bca_env_add_var_int("bcit_addr", _bcit_addr);
 
-	bca_env_add_var_int("rg_w8a", RG_W8A);
-	bca_env_add_var_int("rg_w8b", RG_W8B);
-	bca_env_add_var_int("rg_w8c", RG_W8C);
-	bca_env_add_var_int("rg_w16a", RG_W16A);
+	bca_env_add_var_int("rg_8a", RG_8A);
+	bca_env_add_var_int("rg_8b", RG_8B);
+	bca_env_add_var_int("rg_8c", RG_8C);
+
+	bca_env_add_var_int("rg_16a", RG_16A);
+	bca_env_add_var_int("rg_16b", RG_16B);
+	bca_env_add_var_int("rg_16c", RG_16C);
+
+	bca_env_add_var_int("rg_32a", RG_32A);
+	bca_env_add_var_int("rg_32b", RG_32B);
+	bca_env_add_var_int("rg_32c", RG_32C);
+
+	bca_env_add_var_int("rg_64a", RG_64A);
+	bca_env_add_var_int("rg_64b", RG_64B);
+	bca_env_add_var_int("rg_64c", RG_64C);
 
 	bca_env_add_var_int("sp", RG_SP);
 	bca_env_add_var_int("bp", RG_BP);
@@ -251,7 +262,7 @@ void ast_bca(struct node **__node, struct vec __vec) {
 
 void ast_str(struct node **__node, char *__s, mdl_uint_t __cc) {
 	struct type *_type = NULL;
-	make_array_type(&_type, type_w8, __cc);
+	make_array_type(&_type, type_8l, __cc);
 
 	build_ast(__node, &(struct node){.kind=AST_LITERAL, ._type=_type, .p=(char*)__s});
 }
@@ -297,10 +308,10 @@ void make_notype(struct type **__type, mdl_u8_t __kind, mdl_u8_t __flags) {
 
 	_type->flags = __flags;
 	switch((_type->kind = __kind)) {
-		case T_KIND_X8: _type->size = 1; _type->bcit = _bcit_w8; break;
-		case T_KIND_X16: _type->size = 2; _type->bcit = _bcit_w16; break;
-		case T_KIND_X32: _type->size = 4; _type->bcit = _bcit_w32; break;
-		case T_KIND_X64: _type->size = 8; _type->bcit = _bcit_w64; break;
+		case T_KIND_X8: _type->size = 1; _type->bcit = _bcit_8l; break;
+		case T_KIND_X16: _type->size = 2; _type->bcit = _bcit_16l; break;
+		case T_KIND_X32: _type->size = 4; _type->bcit = _bcit_32l; break;
+		case T_KIND_X64: _type->size = 8; _type->bcit = _bcit_64l; break;
 	}
 
 	*__type = _type;
@@ -795,15 +806,15 @@ void read_stmt(struct node **__node) {
 void read_int(struct node **__node, char *__s) {
 	mdl_uint_t val = str_to_int(__s);
 
-	struct type *_type = type_w8;
+	struct type *_type = type_8l;
 	if (val >= 0 && val <= (mdl_u8_t)~0)
-		_type = type_w8;
+		_type = type_8l;
 	else if (val > (mdl_u8_t)~0 && val <= (mdl_u16_t)~0)
-		_type = type_w16;
+		_type = type_16l;
 	else if (val > (mdl_u16_t)~0 && val <= (mdl_u32_t)~0)
-		_type = type_w32;
+		_type = type_32l;
 	else if (val > (mdl_u32_t)~0 && val <= (mdl_u64_t)~0)
-		_type = type_w64;
+		_type = type_64l;
 	ast_int_type(__node, _type, (mdl_u8_t*)&val);
 }
 
@@ -882,10 +893,10 @@ void read_declarator_params(struct vec *__params, mdl_u8_t *__ellipsis) {
 struct type* bcit_to_type(mdl_u8_t __bcit) {
 	switch(__bcit) {
 		case _bcit_void: return type_void;
-		case _bcit_w8: return type_w8;
-		case _bcit_w16: return type_w16;
-		case _bcit_w32: return type_w32;
-		case _bcit_w64: return type_w64;
+		case _bcit_8l: return type_8l;
+		case _bcit_16l: return type_16l;
+		case _bcit_32l: return type_32l;
+		case _bcit_64l: return type_64l;
 		case _bcit_addr: return type_ptr;
 	}
 }
@@ -957,7 +968,7 @@ void read_primary_expr(struct node **__node) {
 			ast_str(__node, (char*)tok->p, tok->bc);
 		break;
 		case TOK_CHR:
-			ast_int_type(__node, type_w8, (mdl_u8_t*)tok->p);
+			ast_int_type(__node, type_8l, (mdl_u8_t*)tok->p);
 		break;
 		default:
 			ulex(tok);
@@ -1199,7 +1210,7 @@ void read_var_or_func(struct node **__node, char *__name) {
 		return;
 	} else if (!strcmp(__name, "extern_call")) {
 		struct type *_type;
-		make_func_type(&_type, type_w8, (struct vec){}, 0);
+		make_func_type(&_type, type_8l, (struct vec){}, 0);
 		ast_func(__node, __name, _type, NULL, (struct vec){}, NULL);
 		return;
 	}
@@ -1334,7 +1345,7 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 		ast_var(&var, _type, name);
 
 		map_put(__is_local? local_env:&global_env, (mdl_u8_t*)name, strlen(name), var);
-		bca_env_add_var_int(name, RG_W16A);
+		bca_env_add_var_int(name, RG_16A);
 
 		printf("name ----- %s\n", name);
 

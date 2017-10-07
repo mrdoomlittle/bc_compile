@@ -41,8 +41,8 @@ mdl_i8_t open_src_file(char *__src_fpth) {
 
 struct map macros;
 struct vec type_defs;
-struct vec static* inc_pths;
-bcc_err_t bcc_init(struct bcc *__bcc, struct vec *__inc_pths) {
+struct vec static* inc_paths;
+bcc_err_t bcc_init(struct bcc *__bcc, struct vec *__inc_paths) {
 	if (access(__bcc->src_fpth, R_OK) < 0) {
 		fprintf(stderr, "bcc, source file does not exist, errno: %d\n", errno);
 		return BCC_FAILURE;
@@ -57,7 +57,7 @@ bcc_err_t bcc_init(struct bcc *__bcc, struct vec *__inc_pths) {
 	open_src_file((char*)__bcc->src_fpth);
 	vec_init(&type_defs);
 	map_init(&macros);
-	inc_pths = __inc_pths;
+	inc_paths = __inc_paths;
 	return BCC_SUCCESS;
 }
 
@@ -167,7 +167,7 @@ void read_include() {
 		return;
 	}
 
-	char **itr = (char**)vec_begin(inc_pths);
+	char **itr = (char**)vec_begin(inc_paths);
 	for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 		char *fr;
 		char *_fpth = strcmb((fr = strcmb(*itr, "/")), fpth);
