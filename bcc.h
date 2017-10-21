@@ -82,7 +82,6 @@ enum {
 	SLASH,
 	K_ELSE,
 	K_TYPEDEF,
-	NOSIGN,
 	ASTERISK,
 	AMPERSAND,
 	K_RETURN,
@@ -191,6 +190,7 @@ struct token {
 	void *p;
 	mdl_uint_t bc;
 	mdl_u8_t bca;
+	mdl_u8_t hex;
 };
 
 struct buff {
@@ -373,6 +373,7 @@ bcc_err_t parse_de_init();
 bcc_err_t expect_token(mdl_u8_t, mdl_u8_t);
 void byte_ncpy(mdl_u8_t*, mdl_u8_t*, mdl_uint_t);
 
+mdl_uint_t hex_to_int(char*);
 mdl_uint_t str_to_int(char*);
 
 bcc_err_t open_file(struct file_t*);

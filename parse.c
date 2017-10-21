@@ -3,10 +3,17 @@ struct buff static node_buff;
 struct node *node_itr;
 
 struct type *type_void = &(struct type){.bcit=_bcit_void, .kind=T_KIND_VOID, .size=0, .flags=0};
-struct type *type_8l = &(struct type){.bcit=_bcit_8l, .kind=T_KIND_X8, .size=1, .flags=UNSIGNED};
-struct type *type_16l = &(struct type){.bcit=_bcit_16l, .kind=T_KIND_X16, .size=2, .flags=UNSIGNED};
-struct type *type_32l = &(struct type){.bcit=_bcit_32l, .kind=T_KIND_X32, .size=4, .flags=UNSIGNED};
-struct type *type_64l = &(struct type){.bcit=_bcit_64l, .kind=T_KIND_X64, .size=8, .flags=UNSIGNED};
+
+struct type *type_8l_u = &(struct type){.bcit=_bcit_8l, .kind=T_KIND_X8, .size=1, .flags=UNSIGNED};
+struct type *type_16l_u = &(struct type){.bcit=_bcit_16l, .kind=T_KIND_X16, .size=2, .flags=UNSIGNED};
+struct type *type_32l_u = &(struct type){.bcit=_bcit_32l, .kind=T_KIND_X32, .size=4, .flags=UNSIGNED};
+struct type *type_64l_u = &(struct type){.bcit=_bcit_64l, .kind=T_KIND_X64, .size=8, .flags=UNSIGNED};
+
+struct type *type_8l_s = &(struct type){.bcit=_bcit_8l, .kind=T_KIND_X8, .size=1, .flags=SIGNED};
+struct type *type_16l_s = &(struct type){.bcit=_bcit_16l, .kind=T_KIND_X16, .size=2, .flags=SIGNED};
+struct type *type_32l_s = &(struct type){.bcit=_bcit_32l, .kind=T_KIND_X32, .size=4, .flags=SIGNED};
+struct type *type_64l_s = &(struct type){.bcit=_bcit_64l, .kind=T_KIND_X64, .size=8, .flags=SIGNED};
+
 struct type *type_ptr = &(struct type){.bcit=_bcit_addr, .kind=T_KIND_PTR, .size=2, .flags=UNSIGNED};
 
 struct map static global_env;
@@ -262,7 +269,7 @@ void ast_bca(struct node **__node, struct vec __vec) {
 
 void ast_str(struct node **__node, char *__s, mdl_uint_t __cc) {
 	struct type *_type = NULL;
-	make_array_type(&_type, type_8l, __cc);
+	make_array_type(&_type, type_8l_u, __cc);
 
 	build_ast(__node, &(struct node){.kind=AST_LITERAL, ._type=_type, .p=(char*)__s});
 }
@@ -803,23 +810,23 @@ void read_stmt(struct node **__node) {
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
-void read_int(struct node **__node, char *__s) {
-	mdl_uint_t val = str_to_int(__s);
+void read_no(struct node **__node, char *__s, mdl_u8_t __hex) {
+	mdl_uint_t val;
+	if (__hex)
+		val = hex_to_int(__s);
+	else
+		val = str_to_int(__s);
 
-	struct type *_type = type_8l;
+	struct type *_type = type_8l_u;
 	if (val >= 0 && val <= (mdl_u8_t)~0)
-		_type = type_8l;
+		_type = type_8l_u;
 	else if (val > (mdl_u8_t)~0 && val <= (mdl_u16_t)~0)
-		_type = type_16l;
+		_type = type_16l_u;
 	else if (val > (mdl_u16_t)~0 && val <= (mdl_u32_t)~0)
-		_type = type_32l;
+		_type = type_32l_u;
 	else if (val > (mdl_u32_t)~0 && val <= (mdl_u64_t)~0)
-		_type = type_64l;
+		_type = type_64l_u;
 	ast_int_type(__node, _type, (mdl_u8_t*)&val);
-}
-
-void read_no(struct node **__node, char *__s) {
-	read_int(__node, __s);
 }
 
 void read_primary_expr(struct node**);
@@ -890,15 +897,16 @@ void read_declarator_params(struct vec *__params, mdl_u8_t *__ellipsis) {
 	}
 }
 
-struct type* bcit_to_type(mdl_u8_t __bcit) {
+struct type* bcit_to_type(mdl_u8_t __bcit, mdl_u8_t __sgnd) {
 	switch(__bcit) {
 		case _bcit_void: return type_void;
-		case _bcit_8l: return type_8l;
-		case _bcit_16l: return type_16l;
-		case _bcit_32l: return type_32l;
-		case _bcit_64l: return type_64l;
+		case _bcit_8l: return (__sgnd? type_8l_s:type_8l_u);
+		case _bcit_16l: return (__sgnd? type_16l_s:type_16l_u);
+		case _bcit_32l: return (__sgnd? type_32l_s:type_32l_u);
+		case _bcit_64l: return (__sgnd? type_64l_s:type_64l_u);
 		case _bcit_addr: return type_ptr;
 	}
+	return NULL;
 }
 
 void read_func_call(struct node **__node, struct node *__func) {
@@ -922,7 +930,7 @@ void read_func_call(struct node **__node, struct node *__func) {
 
 			while(p1 != NULL) {
 				if ((*p2)->_type->bcit != (*p1)->_type->bcit) {
-					ast_conv(p2, bcit_to_type((*p1)->_type->bcit), *p2);
+					ast_conv(p2, bcit_to_type((*p1)->_type->bcit, 0), *p2);
 				}
 
 				vec_itr((void**)&p1, VEC_ITR_DOWN, 1);
@@ -959,7 +967,7 @@ void read_primary_expr(struct node **__node) {
 			read_var_or_func(__node, (char*)tok->p);
 		break;
 		case TOK_NO:
-			read_no(__node, (char*)tok->p);
+			read_no(__node, (char*)tok->p, tok->hex);
 		break;
 		case TOK_KEYWORD:
 			ulex(tok);
@@ -968,7 +976,7 @@ void read_primary_expr(struct node **__node) {
 			ast_str(__node, (char*)tok->p, tok->bc);
 		break;
 		case TOK_CHR:
-			ast_int_type(__node, type_8l, (mdl_u8_t*)tok->p);
+			ast_int_type(__node, type_8l_u, (mdl_u8_t*)tok->p);
 		break;
 		default:
 			ulex(tok);
@@ -1105,11 +1113,13 @@ void read_cast_expr(struct node **__node) {
 }
 
 struct type* usual_arith_conv(struct type *__l, struct type *__r) {
-	struct type *_type = bcit_to_type(__l->bcit);
-	if (bcit_sizeof(__l->bcit) > bcit_sizeof(__r->bcit))
-		_type = bcit_to_type(__l->bcit);
-	else if (bcit_sizeof(__l->bcit) < bcit_sizeof(__r->bcit))
-		_type = bcit_to_type(__r->bcit);
+	struct type *_type = bcit_to_type(__l->bcit, (__l->flags&SIGNED) == SIGNED);
+
+	if (bcit_sizeof(__l->bcit) > bcit_sizeof(__r->bcit)) {
+		_type = bcit_to_type(__l->bcit, (__l->flags&SIGNED) == SIGNED);
+	} else if (bcit_sizeof(__l->bcit) < bcit_sizeof(__r->bcit)) {
+		_type = bcit_to_type(__r->bcit, (__r->flags&SIGNED) == SIGNED);
+	}
 	return _type;
 }
 
@@ -1231,7 +1241,7 @@ void read_var_or_func(struct node **__node, char *__name) {
 		return;
 	} else if (!strcmp(__name, "extern_call")) {
 		struct type *_type;
-		make_func_type(&_type, type_8l, (struct vec){}, 0);
+		make_func_type(&_type, type_8l_u, (struct vec){}, 0);
 		ast_func(__node, __name, _type, NULL, (struct vec){}, NULL);
 		return;
 	}

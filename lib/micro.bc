@@ -2,6 +2,7 @@
 # define digital_high 1
 # define digital_in 0
 # define digital_out 1
+
 struct __arg {u8_t pin_mode, pin_state, pid;};
 struct __arg arg;
 

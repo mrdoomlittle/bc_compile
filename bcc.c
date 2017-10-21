@@ -80,6 +80,21 @@ void byte_ncpy(mdl_u8_t *__dst, mdl_u8_t *__src, mdl_uint_t __n) {
 	}
 }
 
+mdl_uint_t hex_to_int(char *__hex) {
+	char *itr = __hex;
+	mdl_uint_t l = strlen(__hex);
+	char c;
+	mdl_uint_t val = 0;
+	while(itr++ != __hex+l) {
+		c = *(itr-1);
+		if (c >= '0' && c <= '9')
+			val = (val<<4)|((c-'0')&0xF);
+		else if (c >= 'A' && c <= 'F')
+			val = (val<<4)|(((c-'A')+10)&0xF);
+	}
+	return val;
+}
+
 mdl_uint_t str_to_int(char *__str) {
 	mdl_uint_t no_unit = 1, no = 0;
 	for (mdl_uint_t ic = 0;; ic++) {
@@ -212,7 +227,6 @@ void read_macro() {
 	read_token(&tok, 1);
 
 	if (tok->kind != TOK_IDENT) return;
-
 	if (!strcmp((char*)tok->p, "include")) read_include();
 	if (!strcmp((char*)tok->p, "define")) read_define();
 }
@@ -231,8 +245,6 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 
 			if (toks != NULL) {
 				struct token *tok = NULL;
-
-
 				struct token **itr = (struct token**)vec_end(toks);
 				while(itr != NULL) {
 					if (itr != (struct token**)vec_begin(toks))
@@ -249,7 +261,7 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 			}
 		}
 
-		if (is_keyword(*__tok, NOSIGN)) {
+		if (is_keyword(*__tok, HASH)) {
 			read_macro();
 		} else break;
 	}
@@ -397,7 +409,7 @@ bcc_err_t bcc_run(struct bcc *__bcc) {
 	}
 
 	struct node **itr = (struct node**)vec_begin(&ni);
-	for (; itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
+	for (;itr != NULL; vec_itr((void**)&itr, VEC_ITR_DOWN, 1)) {
 		if (gen(*itr) != BCC_SUCCESS) break;
 		print_node(*itr);
 	}

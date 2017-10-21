@@ -477,6 +477,15 @@ void emit_literal(struct node *__node) {
 	}
 
 	bci_emit_assign(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&val, __node->_type->bcit, 0);
+	if ((__node->_type->flags&SIGNED) == SIGNED) {
+		switch(__node->_type->bcit) {
+			case _bcit_8l: *(mdl_u8_t*)__node->val = *(mdl_i8_t*)__node->val;
+			case _bcit_16l: *(mdl_u16_t*)__node->val = *(mdl_i16_t*)__node->val;
+			case _bcit_32l: *(mdl_u32_t*)__node->val = *(mdl_i32_t*)__node->val;
+			case _bcit_64l: *(mdl_u64_t*)__node->val = *(mdl_i64_t*)__node->val;
+		}
+	}
+
 	byte_ncpy(val, __node->val, bcit_sizeof(__node->_type->bcit));
 }
 
@@ -717,7 +726,7 @@ void emit_print(struct node *__node) {
 	mdl_u8_t bcit = arg->_type->bcit;
 
 	mdl_u8_t _signed = (arg->_type->flags&SIGNED) == SIGNED;
-	bci_emit_print(_signed? bcit|_bcit_msigned:bcit, get_rga_addr(bcit));
+	bci_emit_print(_signed? (bcit|_bcit_msigned):bcit, get_rga_addr(bcit));
 }
 
 void emit_extern_call(struct node *__node) {

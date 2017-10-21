@@ -60,8 +60,8 @@ void static make_invalid(struct token *__tok) {
 void static make_ident(struct token *__tok, char *__s) {
 	build_token(__tok, &(struct token){.kind=TOK_IDENT, .p=(void*)__s});}
 
-void static make_no(struct token *__tok, char *__s) {
-	build_token(__tok, &(struct token){.kind=TOK_NO, .p=(void*)__s});}
+void static make_no(struct token *__tok, char *__s, mdl_u8_t __hex) {
+	build_token(__tok, &(struct token){.kind=TOK_NO, .p=(void*)__s, .hex=__hex});}
 
 void static make_str(struct token *__tok, char *__s, mdl_uint_t __bc) {
 	build_token(__tok, &(struct token){.kind=TOK_STR, .p=(void*)__s, .bc=__bc});}
@@ -87,6 +87,24 @@ char static* read_no() {
 	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
 	mdl_u8_t *si = src_itr;
 	while(*src_itr >= '0' && *src_itr <= '9') {
+		puti(tb_itr, *src_itr);
+		incr_src_itr();
+	}
+
+	puti(tb_itr, '\0');
+
+	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
+	mdl_u8_t *p = (mdl_u8_t*)malloc(bc);
+	byte_ncpy(p, (mdl_u8_t*)buff_begin(&tmp_buff), bc);
+	return (char*)p;
+}
+
+char static* read_hex() {
+	incr_src_itr();
+	incr_src_itr();
+	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
+	mdl_u8_t *si = src_itr;
+	while((*src_itr >= '0' && *src_itr <= '9') || (*src_itr >= 'A' && *src_itr <= 'F')) {
 		puti(tb_itr, *src_itr);
 		incr_src_itr();
 	}
@@ -293,8 +311,11 @@ void static _read_token(struct token *__tok) {
 			if ((*src_itr >= 'a' && *src_itr <= 'z') || *src_itr == '_') {
 				make_ident(__tok, read_ident());
 				break;
+			} else if (*src_itr == '0' && is_next('x')) {
+				make_no(__tok, read_hex(), 1);
+				break;
 			} else if (*src_itr >= '0' && *src_itr <= '9') {
-				make_no(__tok, read_no());
+				make_no(__tok, read_no(), 0);
 				break;
 			}
 
