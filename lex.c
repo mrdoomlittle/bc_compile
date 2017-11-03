@@ -67,14 +67,10 @@ void static make_str(struct token *__tok, char *__s, mdl_uint_t __bc) {
 	build_token(__tok, &(struct token){.kind=TOK_STR, .p=(void*)__s, .bc=__bc});}
 
 struct buff static tmp_buff;
-char static* read_ident() {
+char static* read_ident(char **__itr) {
 	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
-	mdl_u8_t *si = src_itr;
-	while((*src_itr >= 'a' && *src_itr <= 'z') || *src_itr == '_' ||(*src_itr >= '0' && *src_itr <= '9')) {
-		puti(tb_itr, *src_itr);
-		incr_src_itr();
-	}
-
+	while((**__itr >= 'a' && **__itr <= 'z') || **__itr == '_' ||(**__itr >= '0' && **__itr <= '9')) {
+		puti(tb_itr, *((*__itr)++));}
 	puti(tb_itr, '\0');
 
 	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
@@ -83,14 +79,10 @@ char static* read_ident() {
 	return (char*)p;
 }
 
-char static* read_no() {
+char static* read_no(char **__itr) {
 	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
-	mdl_u8_t *si = src_itr;
-	while(*src_itr >= '0' && *src_itr <= '9') {
-		puti(tb_itr, *src_itr);
-		incr_src_itr();
-	}
-
+	while(**__itr >= '0' && **__itr <= '9') {
+		puti(tb_itr, *((*__itr)++));}
 	puti(tb_itr, '\0');
 
 	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
@@ -99,16 +91,11 @@ char static* read_no() {
 	return (char*)p;
 }
 
-char static* read_hex() {
-	incr_src_itr();
-	incr_src_itr();
+char static* read_hex(char **__itr) {
+	(*__itr)+=2;
 	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
-	mdl_u8_t *si = src_itr;
-	while((*src_itr >= '0' && *src_itr <= '9') || (*src_itr >= 'A' && *src_itr <= 'F')) {
-		puti(tb_itr, *src_itr);
-		incr_src_itr();
-	}
-
+	while((**__itr >= '0' && **__itr <= '9') || (**__itr >= 'A' && **__itr <= 'F')) {
+		puti(tb_itr, *((*__itr)++));}
 	puti(tb_itr, '\0');
 
 	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
@@ -309,13 +296,13 @@ void static _read_token(struct token *__tok) {
 		case '\n': __tok->kind=TOK_NEWLINE; incr_src_itr(); break;
 		default:
 			if ((*src_itr >= 'a' && *src_itr <= 'z') || *src_itr == '_') {
-				make_ident(__tok, read_ident());
+				make_ident(__tok, read_ident((char**)&src_itr));
 				break;
 			} else if (*src_itr == '0' && is_next('x')) {
-				make_no(__tok, read_hex(), 1);
+				make_no(__tok, read_hex((char**)&src_itr), 1);
 				break;
 			} else if (*src_itr >= '0' && *src_itr <= '9') {
-				make_no(__tok, read_no(), 0);
+				make_no(__tok, read_no((char**)&src_itr), 0);
 				break;
 			}
 
@@ -394,8 +381,8 @@ void bca_make_ident(struct bca_token *__tok, char *__s) {
 	*__tok = (struct bca_token){.kind=TOK_IDENT, .p=(void*)__s};
 }
 
-void bca_make_no(struct bca_token *__tok, char *__s) {
-	*__tok = (struct bca_token){.kind=TOK_NO, .p=(void*)__s};
+void bca_make_no(struct bca_token *__tok, char *__s, mdl_u8_t __is_hex) {
+	*__tok = (struct bca_token){.kind=TOK_NO, .p=(void*)__s, .is_hex=__is_hex};
 }
 
 mdl_u8_t bca_ignore_space(char __c) {
@@ -405,34 +392,6 @@ mdl_u8_t bca_ignore_space(char __c) {
 
 struct bca_token bca_tok_buff[200];
 struct bca_token *bca_tok_itr = bca_tok_buff;
-char* bca_read_ident(char **__bca_itr) {
-	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
-	while(((**__bca_itr >= 'a' && **__bca_itr <= 'z') || **__bca_itr == '_') || (**__bca_itr >= '0' && **__bca_itr <= '9')) {
-		puti(tb_itr, **__bca_itr);
-		(*__bca_itr)++;
-	}
-
-	puti(tb_itr, '\0');
-	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
-	mdl_u8_t *p = (mdl_u8_t*)malloc(bc);
-	byte_ncpy(p, (mdl_u8_t*)buff_begin(&tmp_buff), bc);
-	return (char*)p;
-}
-
-char* bca_read_no(char **__bca_itr) {
-	mdl_u8_t *tb_itr = (mdl_u8_t*)buff_begin(&tmp_buff);
-	while(**__bca_itr >= '0' && **__bca_itr <= '9') {
-		puti(tb_itr, **__bca_itr);
-		(*__bca_itr)++;
-	}
-
-	puti(tb_itr, '\0');
-	mdl_uint_t bc = tb_itr-(mdl_u8_t*)buff_begin(&tmp_buff);
-	mdl_u8_t *p = (mdl_u8_t*)malloc(bc);
-	byte_ncpy(p, (mdl_u8_t*)buff_begin(&tmp_buff), bc);
-	return (char*)p;
-}
-
 void read_bca_token(struct bca_token **__tok, char **__itr) {
 	while(bca_ignore_space(**__itr)) (*__itr)++;
 	*__tok = bca_tok_itr++;
@@ -440,10 +399,13 @@ void read_bca_token(struct bca_token **__tok, char **__itr) {
 	switch(**__itr) {
 		default:
 			if ((**__itr >= 'a' && **__itr <= 'z') || **__itr == '_') {
-				bca_make_ident(*__tok, bca_read_ident(__itr));
+				bca_make_ident(*__tok, read_ident(__itr));
 				return;
-			} else if (**__itr >= '0' && **__itr <= '9') {
-				bca_make_no(*__tok, bca_read_no(__itr));
+			} else if (**__itr == '0' && *((*__itr)+1) == 'x') {
+				bca_make_no(*__tok, read_hex(__itr), 1);
+				break;
+            } else if (**__itr >= '0' && **__itr <= '9') {
+				bca_make_no(*__tok, read_no(__itr), 0);
 				return;
 			}
 			bca_tok_itr--;

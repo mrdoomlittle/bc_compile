@@ -268,6 +268,7 @@ struct node {
 struct bca_token {
 	mdl_u8_t kind;
 	void *p;
+	mdl_u8_t is_hex;
 };
 
 struct bca_blk {

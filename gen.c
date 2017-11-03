@@ -836,9 +836,18 @@ void emit_bca_mov(struct bca_blk *__blk) {
 }
 
 void emit_bca_assign(struct bca_blk *__blk) {
-	mdl_u8_t *val;
+	mdl_u8_t *val, bcit = __blk->bcit;
+	if ((bcit&_bcit_msigned) == _bcit_msigned) bcit ^= _bcit_msigned;
 	bci_emit_assign(__blk->addr, &val, __blk->bcit, __blk->flags);
-	*val = __blk->val;
+
+	if (bcit == _bcit_8l)
+		*val = __blk->val;
+	else if (bcit == _bcit_16l)
+		*(mdl_u16_t*)val = __blk->val;
+	else if (bcit == _bcit_32l)
+		*(mdl_u32_t*)val = __blk->val;
+	else if (bcit == _bcit_64l)
+		*(mdl_u64_t*)val = __blk->val;
 }
 
 void emit_bca_nop(struct bca_blk *__blk) {
@@ -1016,11 +1025,21 @@ bcc_err_t gen(struct node *__node) {
 	mdl_u8_t *itr = (mdl_u8_t*)buff_begin(&bc_buff);
 	for (;itr != bcb_itr; itr++) {
 		mdl_u8_t *end = itr+8;
+		fprintf(stdout, "{");
 		for (;itr != end; itr++) {
-			if (itr >= bcb_itr) {printf("bcb_size: %u\n", bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff));return BCC_SUCCESS;}
-			printf("%x,	", *itr);
+			if (itr >= bcb_itr) {
+				fprintf(stdout, "} - ");
+				fprintf(stdout, "bcb_size: %u\n", bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff));
+				return BCC_SUCCESS;
+			}
+
+			if (itr+1 == end || itr+1 == bcb_itr)
+				fprintf(stdout, "%02x", *itr);
+			else
+				fprintf(stdout, "%02x,\t", *itr);
+
 		}
-		printf("\n");
+		fprintf(stdout, "}\n");
 	}
 
 	return BCC_SUCCESS;

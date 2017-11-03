@@ -609,7 +609,10 @@ mdl_uint_t bca_read_literal(char **__itr) {
 	read_bca_token(&tok, __itr);
 
 	if (tok->kind == TOK_NO)
-		return str_to_int((char*)tok->p);
+		if (tok->is_hex)
+			return hex_to_int((char*)tok->p);
+		else
+			return str_to_int((char*)tok->p);
 	else if (tok->kind == TOK_IDENT) {
 		struct bca_blk *blk;
 		map_get(&bca_env, (mdl_u8_t const*)tok->p, strlen((char*)tok->p), (void**)&blk);
@@ -912,7 +915,7 @@ struct type* bcit_to_type(mdl_u8_t __bcit, mdl_u8_t __sgnd) {
 void read_func_call(struct node **__node, struct node *__func) {
 	struct node *_goto = NULL;
 	struct vec args = read_func_args();
-	if (!strcmp((char*)__func->p, "print")) {
+	if (!strcmp((char*)__func->p, "_print")) {
 		if (!vec_size(&args)) {
 			fprintf(stderr, "print function need one argument.\n");
 		}
@@ -1236,7 +1239,7 @@ mdl_uint_t read_int_expr() {
 void read_var_or_func(struct node **__node, char *__name) {
 	struct node *node = NULL;
 
-	if (!strcmp(__name, "print")) {
+	if (!strcmp(__name, "_print")) {
 		ast_func(__node, __name, NULL, NULL, (struct vec){}, NULL);
 		return;
 	} else if (!strcmp(__name, "extern_call")) {

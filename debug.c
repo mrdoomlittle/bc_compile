@@ -7,9 +7,11 @@ void static debug_print(char const *__s, ...) {
 	va_list args;
 	va_start(args, __s);
 
+	fprintf(stdout, "|;");
+	if (!padding) fprintf(stdout, " ");
 	mdl_uint_t i = 0;
 	for (;i != padding; i++)
-		fprintf(stdout, "	", padding);
+		fprintf(stdout, "  ", padding);
 
 	vfprintf(stdout, __s, args);
 	va_end(args);
@@ -31,7 +33,10 @@ mdl_u8_t trunk = 0;
 mdl_uint_t depth = 0;
 void print_node(struct node *__node) {
 	mdl_u8_t is_trunk = 0;
-	if (!trunk) {is_trunk = 1;trunk = 1;}
+	if (!trunk) {is_trunk = 1;trunk = 1;
+		fprintf(stdout, "/---------------------------------------------------\\\n");
+		padding++;
+	}
 	if (__node == NULL) return;
 	debug_print("node_depth: %u\n", depth);
 	debug_print("node_kind: %s\n", node_kind_as_str(__node->kind));
@@ -75,12 +80,14 @@ void print_node(struct node *__node) {
 	debug_print("node r: %s\n", __node->r == NULL? "null":" ");
 
 	padding = ++depth;
-	debug_print("\x1B[32mchiled nodes:\x1B[0m\n");
+	debug_print("\x1B[32mchild nodes:\x1B[0m\n");
 	struct node **itr = __node->child_buff;
 	for (; itr != __node->child_itr; itr++)
 		if (*itr != NULL) print_node(*itr);
 
-	if (trunk && is_trunk) {padding = 0;trunk = 0;depth = 0;}
+	if (trunk && is_trunk) {padding = 0;trunk = 0;depth = 0;
+		fprintf(stdout, "\\---------------------------------------------------/\n");
+	}
 }
 
 char const* node_kind_as_str(mdl_u8_t __kind) {

@@ -2,6 +2,35 @@
 # include <string.h>
 char extern* strcmb(char*, char*);
 int main(int __argc, char const *__argv[]) {
+//	struct vec my_vec;
+//	vec_init(&my_vec);
+//	mdl_u64_t *a, *b;
+
+//	mdl_u8_t i = 0;
+//	for (;i != 4;i++) {
+//	vec_push(&my_vec, (void**)&a, sizeof(mdl_u64_t));
+//	vec_push(&my_vec, (void**)&b, sizeof(mdl_u64_t));
+//	vec_free(&my_vec, a, 0);
+//	vec_free(&my_vec, b, 0);
+
+//	printf("|--------------------------------------------------------------|\n\n");
+
+//	for (;;){	
+//	vec_push(&my_vec, (void**)&a, sizeof(mdl_u64_t));
+//	vec_free(&my_vec, a, 0);
+//	}
+//	printf("|--------------------------------------------------------------|\n");
+
+//	vec_push(&my_vec, (void**)&a, sizeof(mdl_u64_t));
+//	vec_free(&my_vec, a, 0);
+//	printf("\n\n");
+//	}
+//	vec_push(&my_vec, (void**)&a, sizeof(mdl_u64_t));
+//	vec_free(&my_vec, a, 0);
+//	}
+//	}
+
+//	vec_de_init(&my_vec);
 	if (__argc < 5) {
 		printf("usage:\n -o - dest file.\n -i - src file.\n");
 		return -1;

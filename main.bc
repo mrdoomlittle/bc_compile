@@ -1,2 +1,6 @@
-print(0xFF);
-exit;
+//# include "lib/stdio.bc"
+//# include "lib/mdlint.bc"
+//# define test (12*12)
+//printf("%u", test);
+bca("print bcit_8l 0xFF 0");
+_exit;

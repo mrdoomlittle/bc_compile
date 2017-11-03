@@ -125,6 +125,9 @@ mdl_uint_t str_to_int(char *__str) {
 
 bcc_err_t bcc_de_init() {
 	free(src_buff);
+	buff_free(&file_buff);
+//	vec_de_init(&type_defs);
+	map_de_init(&macros);
 }
 
 # define init_token(__tok) \
@@ -136,7 +139,6 @@ bcc_err_t bcc_de_init() {
 	};
 
 mdl_u8_t maybe_keyword(struct token*);
-
 char* strcmb(char *__a, char *__b) {
 	mdl_uint_t a_len = strlen(__a);
 	mdl_uint_t b_len = strlen(__b);
@@ -225,7 +227,6 @@ void read_define() {
 void read_macro() {
 	struct token *tok;
 	read_token(&tok, 1);
-
 	if (tok->kind != TOK_IDENT) return;
 	if (!strcmp((char*)tok->p, "include")) read_include();
 	if (!strcmp((char*)tok->p, "define")) read_define();
@@ -238,7 +239,6 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 	for (;;) {
 		lex(__tok);
 		if ((*__tok)->kind == TOK_NEWLINE && __sk_nl) continue;
-
 		if ((*__tok)->kind == TOK_IDENT && (*__tok)->p != NULL) {
 			struct vec *toks = NULL;
 			map_get(&macros, (char*)(*__tok)->p, strlen((char*)(*__tok)->p), (void**)&toks);
@@ -265,15 +265,12 @@ struct token* read_token(struct token **__tok, mdl_u8_t __sk_nl) {
 			read_macro();
 		} else break;
 	}
-
 	maybe_keyword(*__tok);
 	return *__tok;
 }
 
 struct token* peek_token(struct token **__tok) {
-	if (!__tok)
-		__tok = &tmp_tok;
-
+	if (!__tok) __tok = &tmp_tok;
 	read_token(__tok, 1);
 	ulex(*__tok);
 	return *__tok;
@@ -317,7 +314,6 @@ void read_typedef() {
 		.type = type,
 		.name = (char*)name->p
 	};
-
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
@@ -326,7 +322,6 @@ mdl_u8_t maybe_keyword(struct token *__tok) {
 	if (*(mdl_u32_t*)__tok->p == 0x5F616362) {
 		__tok->p = (void*)((mdl_u8_t*)__tok->p+sizeof(mdl_u32_t));
 		if (!maybe_keyword(__tok)) return 0;
-
 		__tok->bca = 1;
 		return 1;
 	}
@@ -347,7 +342,7 @@ mdl_u8_t maybe_keyword(struct token *__tok) {
 		to_keyword(__tok, K_STRUCT);
 	else if (is_ident(__tok, "return", 0))
 		to_keyword(__tok, K_RETURN);
-	else if (is_ident(__tok, "exit", 0))
+	else if (is_ident(__tok, "_exit", 0))
 		to_keyword(__tok, K_EXIT);
 	else if (is_ident(__tok, "while", 0))
 		to_keyword(__tok, K_WHILE);
