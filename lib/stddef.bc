@@ -1,2 +1,3 @@
 typedef u8_t char;
+typedef i32_t ssize_t;
 typedef u32_t size_t;

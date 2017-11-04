@@ -1,6 +1,7 @@
-//# include "lib/stdio.bc"
+# include "lib/stdio.bc"
 //# include "lib/mdlint.bc"
-//# define test (12*12)
-//printf("%u", test);
-bca("print bcit_8l 0xFF 0");
+//# include "lib/stddef.bc"
+i8_t x = 0;
+x = x-20;
+printf("%d\n", x);
 _exit;
