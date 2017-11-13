@@ -350,10 +350,15 @@ void static emit_cmp(struct node *__node) {
 	mdl_u8_t r_bcit = r->_type->bcit;
 
 	emit_expr(l);
-	bci_emit_mov(l_bcit, get_rgb_addr(l_bcit), get_rga_addr(l_bcit), 0);
+	stack_push(l_bcit);
 
 	emit_expr(r);
-	bci_emit_cmp(l_bcit, r_bcit, get_rgb_addr(l_bcit), get_rga_addr(r_bcit), get_rga_addr(_bcit_8l));
+	bci_emit_mov(r_bcit, get_rgb_addr(r_bcit), get_rga_addr(r_bcit), 0);
+	stack_pop(l_bcit);
+	bci_emit_mov(l_bcit, get_rgc_addr(l_bcit), get_rga_addr(l_bcit), 0);
+
+	bci_emit_cmp(l_bcit, r_bcit, get_rgc_addr(l_bcit), get_rgb_addr(r_bcit), get_rga_addr(_bcit_8l));
+	stack_push(_bcit_8l);
 }
 
 void static emit_binop(struct node *__node) {
@@ -595,6 +600,7 @@ void emit_if(struct node *__node) {
 	bci_emit_assign(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
 	bci_addr_t jmpm_addr = RG_16B;
 
+	stack_pop(_bcit_8l);
 	if (cond->kind == OP_EQ)
 		bci_emit_cjmp(_bcic_neq, jmpm_addr, get_rga_addr(_bcit_8l));
 	else if (cond->kind == OP_NEQ)
@@ -607,7 +613,6 @@ void emit_if(struct node *__node) {
 		bci_emit_cjmp(_bcic_lt, jmpm_addr, get_rga_addr(_bcit_8l));
 	else if (cond->kind == OP_LEQ)
 		bci_emit_cjmp(_bcic_gt, jmpm_addr, get_rga_addr(_bcit_8l));
-
 	emit_expr(*(__node->child_buff+1));
 
 	bci_addr_t *eljmp_addr;
