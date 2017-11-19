@@ -139,19 +139,14 @@ mdl_u8_t next_token_is(mdl_u8_t __id) {
 	struct token *tok;
 	read_token(&tok, 1);
 
-	if (is_keyword(tok, __id)) {
-		return 1;
-	}
-
+	if (is_keyword(tok, __id)) return 1;
 	ulex(tok);
 	return 0;
 }
 
 void skip_token() {read_token(NULL, 1);}
-
 struct node static* env_lookup(char *__name) {
 	struct node *node = NULL;
-
 	if (local_env != NULL) {
 		map_get(local_env, (mdl_u8_t const*)__name, strlen(__name), (void**)&node);
 		if (node != NULL) return node;
@@ -165,7 +160,6 @@ struct node static* env_lookup(char *__name) {
 }
 
 bcc_err_t read_exit_stmt(struct token*, struct node**);
-
 void add_child(struct node *__m_node, struct node *__child) {
 	*__m_node->child_itr = __child;
 	__m_node->child_itr++;
@@ -581,12 +575,10 @@ void read_goto_stmt(struct node **__node) {
 	struct token *tok;
 	read_token(&tok, 1);
 
-	if (tok->kind != TOK_IDENT) {
+	if (tok->kind != TOK_IDENT)
 		fprintf(stderr, "error\n");
-	}
 
 	char *label = (char*)tok->p;
-
 	ast_goto(__node, label);
 
 	expect_token(TOK_KEYWORD, SEMICOLON);
@@ -740,8 +732,10 @@ struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 			bca_read_fst(blk, &itr);
 		else if (!strcmp((char*)tok->p, "dr"))
 			bca_read_dr_stmt(blk, &itr);
-		else
+		else {
+			//error
 			itr++;
+		}
 	}
 	return _vec;
 }
@@ -788,7 +782,6 @@ void read_va_ptr_operand(struct node **__node) {
 void read_stmt(struct node **__node) {
 	struct token *tok;
 	read_token(&tok, 1);
-
 	if (tok->kind == TOK_KEYWORD) {
 		switch(tok->id) {
 			case L_BRACE: read_compound_stmt(__node); return;
@@ -813,7 +806,7 @@ void read_stmt(struct node **__node) {
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
-void read_no(struct node **__node, char *__s, mdl_u8_t __hex) {
+void read_no(struct node **__node, char *__s, mdl_u8_t __hex, mdl_u8_t __neg) {
 	mdl_uint_t val;
 	if (__hex)
 		val = hex_to_int(__s);
@@ -822,19 +815,19 @@ void read_no(struct node **__node, char *__s, mdl_u8_t __hex) {
 
 	struct type *_type = type_8l_u;
 	if (val >= 0 && val <= (mdl_u8_t)~0)
-		_type = type_8l_u;
+		_type = __neg?type_8l_s:type_8l_u;
 	else if (val > (mdl_u8_t)~0 && val <= (mdl_u16_t)~0)
-		_type = type_16l_u;
+		_type = __neg?type_16l_s:type_16l_u;
 	else if (val > (mdl_u16_t)~0 && val <= (mdl_u32_t)~0)
-		_type = type_32l_u;
+		_type = __neg?type_32l_s:type_32l_u;
 	else if (val > (mdl_u32_t)~0 && val <= (mdl_u64_t)~0)
-		_type = type_64l_u;
+		_type = __neg?type_64l_s:type_64l_u;
+	if (__neg) val = -val;
 	ast_int_type(__node, _type, (mdl_u8_t*)&val);
 }
 
 void read_primary_expr(struct node**);
 void read_additive_expr(struct node**);
-
 void read_func_param(char **__name, struct type **__type) {
 	struct token *tok;
 	read_token(&tok, 1);
@@ -880,8 +873,6 @@ void read_declarator_params(struct vec *__params, mdl_u8_t *__ellipsis) {
 		vec_push(__params, (void**)&node, sizeof(struct node*));
 		*node = NULL;
 
-		//struct node *param = NULL;
-
 		char *name;
 		struct type *_type;
 		read_func_param(&name, &_type);
@@ -900,13 +891,13 @@ void read_declarator_params(struct vec *__params, mdl_u8_t *__ellipsis) {
 	}
 }
 
-struct type* bcit_to_type(mdl_u8_t __bcit, mdl_u8_t __sgnd) {
+struct type* bcit_to_type(mdl_u8_t __bcit, mdl_u8_t __signd) {
 	switch(__bcit) {
 		case _bcit_void: return type_void;
-		case _bcit_8l: return (__sgnd? type_8l_s:type_8l_u);
-		case _bcit_16l: return (__sgnd? type_16l_s:type_16l_u);
-		case _bcit_32l: return (__sgnd? type_32l_s:type_32l_u);
-		case _bcit_64l: return (__sgnd? type_64l_s:type_64l_u);
+		case _bcit_8l: return (__signd? type_8l_s:type_8l_u);
+		case _bcit_16l: return (__signd? type_16l_s:type_16l_u);
+		case _bcit_32l: return (__signd? type_32l_s:type_32l_u);
+		case _bcit_64l: return (__signd? type_64l_s:type_64l_u);
 		case _bcit_addr: return type_ptr;
 	}
 	return NULL;
@@ -916,10 +907,8 @@ void read_func_call(struct node **__node, struct node *__func) {
 	struct node *_goto = NULL;
 	struct vec args = read_func_args();
 	if (!strcmp((char*)__func->p, "_print")) {
-		if (!vec_size(&args)) {
+		if (!vec_size(&args))
 			fprintf(stderr, "print function need one argument.\n");
-		}
-
 		ast_func_call(__node, NULL, NULL, NULL, args);
 		(*__node)->kind = AST_PRINT;
 	} else if (!strcmp((char*)__func->p, "extern_call")) {
@@ -966,21 +955,11 @@ void read_primary_expr(struct node **__node) {
 	read_token(&tok, 1);
 
 	switch(tok->kind) {
-		case TOK_IDENT:
-			read_var_or_func(__node, (char*)tok->p);
-		break;
-		case TOK_NO:
-			read_no(__node, (char*)tok->p, tok->hex);
-		break;
-		case TOK_KEYWORD:
-			ulex(tok);
-		break;
-		case TOK_STR:
-			ast_str(__node, (char*)tok->p, tok->bc);
-		break;
-		case TOK_CHR:
-			ast_int_type(__node, type_8l_u, (mdl_u8_t*)tok->p);
-		break;
+		case TOK_IDENT: read_var_or_func(__node, (char*)tok->p); break;
+		case TOK_NO: read_no(__node, (char*)tok->p, tok->hex, tok->neg); break;
+		case TOK_STR: ast_str(__node, (char*)tok->p, tok->bc); break;
+		case TOK_CHR: ast_int_type(__node, type_8l_u, (mdl_u8_t*)tok->p); break;
+		case TOK_KEYWORD: ulex(tok); break;
 		default:
 			ulex(tok);
 			printf("error. got:\n");
@@ -1009,7 +988,7 @@ void read_unary_expr(struct node **__node) {
 	struct token *tok;
 	read_token(&tok, 1);
 
-	if (tok->kind == TOK_KEYWORD){
+	if (tok->kind == TOK_KEYWORD) {
 		switch(tok->id) {
 			case K_SIZEOF: read_sizeof_operand(__node); return;
 			case K_VA_PTR: read_va_ptr_operand(__node); return;
@@ -1253,7 +1232,6 @@ void read_var_or_func(struct node **__node, char *__name) {
 
 	if (node == NULL)
 		fprintf(stderr, "failed to get var. error !!!!!!!!!!!!!!!!! -- %s\n", __name);
-
 	*__node = node;
 }
 

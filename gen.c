@@ -3,6 +3,7 @@
 struct buff static bc_buff;
 mdl_u8_t static *bcb_itr;
 
+# define IS_SIGNED(__flags) ((__flags&SIGNED) == SIGNED)
 bci_addr_t get_addr() {
 	return (bci_addr_t)(bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff));
 }
@@ -338,8 +339,7 @@ void static emit_aop(struct node *__node, mdl_u8_t __aop) {
 	bci_addr_t l_addr = get_rga_addr(l_bcit);
 	bci_addr_t r_addr = get_rgb_addr(r_bcit);
 
-	mdl_u8_t _signed = (__node->_type->flags&SIGNED) == SIGNED;
-	bci_emit_aop(__aop, _signed? bcit|_bcit_msigned:bcit, &l_addr, &r_addr, get_rga_addr(bcit), 0);
+	bci_emit_aop(__aop, IS_SIGNED(__node->_type->flags)? bcit|_bcit_msigned:bcit, &l_addr, &r_addr, get_rga_addr(bcit), 0);
 }
 
 void static emit_cmp(struct node *__node) {
@@ -357,7 +357,7 @@ void static emit_cmp(struct node *__node) {
 	stack_pop(l_bcit);
 	bci_emit_mov(l_bcit, get_rgc_addr(l_bcit), get_rga_addr(l_bcit), 0);
 
-	bci_emit_cmp(l_bcit, r_bcit, get_rgc_addr(l_bcit), get_rgb_addr(r_bcit), get_rga_addr(_bcit_8l));
+	bci_emit_cmp(IS_SIGNED(l->_type->flags)? l_bcit|_bcit_msigned:l_bcit, IS_SIGNED(r->_type->flags)? r_bcit|_bcit_msigned:r_bcit, get_rgc_addr(l_bcit), get_rgb_addr(r_bcit), get_rga_addr(_bcit_8l));
 	stack_push(_bcit_8l);
 }
 
@@ -510,7 +510,7 @@ void emit_literal(struct node *__node) {
 	}
 
 	bci_emit_assign(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&val, __node->_type->bcit, 0);
-	if ((__node->_type->flags&SIGNED) == SIGNED) {
+	if (IS_SIGNED(__node->_type->flags)) {
 		switch(__node->_type->bcit) {
 			case _bcit_8l: *(mdl_u8_t*)__node->val = *(mdl_i8_t*)__node->val;
 			case _bcit_16l: *(mdl_u16_t*)__node->val = *(mdl_i16_t*)__node->val;
@@ -550,7 +550,7 @@ void emit_save(mdl_u8_t __bcit, bci_addr_t __dst_off) {
 
 void emit_load_conv(mdl_u8_t __to_bcit, mdl_u8_t __from_bcit) {
 	if (__to_bcit != __from_bcit)
-		bci_emit_conv(__to_bcit, __from_bcit, get_rga_addr(__to_bcit), get_rga_addr(__from_bcit), 0);
+		bci_emit_conv(__to_bcit, __from_bcit, get_rga_addr(__to_bcit^(__to_bcit&_bcit_msigned)), get_rga_addr(__from_bcit^(__from_bcit&_bcit_msigned)), 0);
 }
 
 void emit_assign(struct node *__node) {
@@ -744,7 +744,7 @@ void emit_func_call(struct node *__node) {
 
 			emit_expr(*itr);
 			bci_emit_mov(bcit, addr, get_rga_addr(bcit), 0);
-			if (((*itr)->_type->flags&SIGNED) == SIGNED && bcit != _bcit_64l) {
+			if (IS_SIGNED((*itr)->_type->flags) && bcit != _bcit_64l) {
 			//	mdl_u64_t mask = (~(mdl_u64_t)0)<<(bcit_sizeof(bcit)*8);
 			//	bci_emit_lop(_bci_lop_or, _bcit_64l, (void*)&addr, (void*)&mask, addr, _bcii_lop_fr_pm);
 				bci_emit_conv(_bcit_64l, bcit|_bcit_msigned, addr, addr, 0);
@@ -762,9 +762,7 @@ void emit_print(struct node *__node) {
 	struct node *arg = *(struct node**)vec_first(&__node->args);
 	emit_expr(arg);
 	mdl_u8_t bcit = arg->_type->bcit;
-
-	mdl_u8_t _signed = (arg->_type->flags&SIGNED) == SIGNED;
-	bci_emit_print(_signed? (bcit|_bcit_msigned):bcit, get_rga_addr(bcit));
+	bci_emit_print(IS_SIGNED(arg->_type->flags)? (bcit|_bcit_msigned):bcit, get_rga_addr(bcit));
 }
 
 void emit_extern_call(struct node *__node) {
@@ -820,9 +818,15 @@ void emit_return(struct node *__node) {
 
 void emit_conv(struct node *__node) {
 	mdl_u8_t to_bcit = __node->_type->bcit;
-	mdl_u8_t from_bcit = (*__node->child_buff)->_type->bcit;
+	if (IS_SIGNED(__node->_type->flags))
+		to_bcit |= _bcit_msigned;
 
-	emit_expr(*__node->child_buff);
+	struct node *child = get_child(__node, 0);
+	mdl_u8_t from_bcit = child->_type->bcit;
+	if (IS_SIGNED(child->_type->flags))
+		from_bcit |= _bcit_msigned;
+
+	emit_expr(child);
 	emit_load_conv(to_bcit, from_bcit);
 }
 

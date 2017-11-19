@@ -1,7 +1,4 @@
 # include "lib/stdio.bc"
-//# include "lib/mdlint.bc"
-//# include "lib/stddef.bc"
-i8_t x = 0;
-x = x-20;
-printf("%d\n", x);
+i32_t x = -222222222;
+printf("hello, 0x%x\n", x);
 _exit;

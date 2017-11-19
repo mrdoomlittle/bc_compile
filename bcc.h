@@ -190,7 +190,7 @@ struct token {
 	void *p;
 	mdl_uint_t bc;
 	mdl_u8_t bca;
-	mdl_u8_t hex;
+	mdl_u8_t hex, neg;
 };
 
 struct buff {

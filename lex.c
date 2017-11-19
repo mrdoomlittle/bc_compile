@@ -61,7 +61,7 @@ void static make_ident(struct token *__tok, char *__s) {
 	build_token(__tok, &(struct token){.kind=TOK_IDENT, .p=(void*)__s});}
 
 void static make_no(struct token *__tok, char *__s, mdl_u8_t __hex) {
-	build_token(__tok, &(struct token){.kind=TOK_NO, .p=(void*)__s, .hex=__hex});}
+	build_token(__tok, &(struct token){.kind=TOK_NO, .p=(void*)__s, .hex=__hex, .neg=0});}
 
 void static make_str(struct token *__tok, char *__s, mdl_uint_t __bc) {
 	build_token(__tok, &(struct token){.kind=TOK_STR, .p=(void*)__s, .bc=__bc});}
@@ -413,6 +413,13 @@ void read_bca_token(struct bca_token **__tok, char **__itr) {
 	}
 }
 
+mdl_u8_t ok(mdl_u8_t __id) {
+	switch(__id) {
+		case EQ: case NEQ: case GT: case LT: case GEQ: case LEQ: return 1;
+	}
+	return 0;
+}
+
 bcc_err_t lex(struct token **__tok) {
 	if (tok_itr > (struct token*)buff_end(&tok_buff))
 		fprintf(stderr, "token buff overflow!!!!!!\n");
@@ -426,5 +433,11 @@ bcc_err_t lex(struct token **__tok) {
 	_read_token(tok);
 
 	while(tok->kind == TOK_SPACE) _read_token(tok);
+	if (tok->kind == TOK_KEYWORD && tok->id == MINUS) {
+		if ((tok_itr-2)->kind == TOK_KEYWORD && ok((tok_itr-2)->id)) {
+			_read_token(tok);
+			tok->neg = 1;
+		}
+	}
 	*__tok = tok;
 }
