@@ -8,7 +8,7 @@
 # include <stdlib.h>
 # include <unistd.h>
 # include <mdlint.h>
-# include <bci.h>
+# include <mdl/bci.h>
 # include <errno.h>
 enum {
 	TOK_KEYWORD,

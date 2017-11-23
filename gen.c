@@ -1,5 +1,4 @@
 # include "bcc.h"
-# include <bci.h>
 struct buff static bc_buff;
 mdl_u8_t static *bcb_itr;
 

@@ -1,4 +1,4 @@
-# include <bcc.h>
+# include <mdl/bcc.h>
 # include <string.h>
 char extern* strcmb(char*, char*);
 int main(int __argc, char const *__argv[]) {

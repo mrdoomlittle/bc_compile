@@ -1,1 +1,1 @@
-rm -f bin/* lib/*.a inc/*.h bcc.o a.out *.o
+rm -f bin/* lib/*.a inc/mdl/*.h bcc.o a.out *.o

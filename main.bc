@@ -1,4 +1,6 @@
-# include "lib/stdio.bc"
-i32_t x = -222222222;
-printf("hello, 0x%x\n", x);
+u8_t x = 0;
+while(x != 20) {
+	_print(x);
+	x++;
+}
 _exit;
