@@ -124,8 +124,9 @@ void bci_emit_aop(mdl_u8_t __aop_kind, mdl_u8_t __type, void *__l, void *__r, bc
 		bcb_emit_addr(*(bci_addr_t*)__r);
 }
 
-void bci_emit_exit() {
+void bci_emit_exit(bci_addr_t __exit_status) {
 	bcii_emit(_bcii_exit, 0);
+	bcb_emit_addr(__exit_status);
 }
 
 void bci_emit_cmp(mdl_u8_t __l_type, mdl_u8_t __r_type, bci_addr_t __l_addr, bci_addr_t __r_addr, bci_addr_t __dst_addr) {
@@ -210,6 +211,11 @@ void bci_emit_eeb_put(mdl_u8_t __blk_id, bci_addr_t __b_addr, bci_addr_t __e_add
 	bcb_emit_8l(__blk_id);
 	bcb_emit_addr(__b_addr);
 	bcb_emit_addr(__e_addr);
+}
+
+void bci_emit_la(bci_addr_t __addr, mdl_u8_t __flags) {
+	bcii_emit(_bcii_la, __flags);
+	bcb_emit_addr(__addr);
 }
 
 bci_addr_t static stack_addr = 0, base_addr = 0;
@@ -487,8 +493,9 @@ void static emit_decl(struct node *__node) {
 	}
 }
 
-void static emit_exit() {
-	bci_emit_exit();
+void static emit_exit(struct node *__exit_status) {
+	emit_expr(__exit_status);
+	bci_emit_exit(get_rga_addr(_bcit_8l));
 }
 
 void emit_literal(struct node *__node) {
@@ -925,6 +932,10 @@ void emit_bca_dr(struct bca_blk *__blk) {
 	bci_emit_dr(__blk->bcit, __blk->src_addr, __blk->dst_addr);
 }
 
+void emit_bca_la(struct bca_blk *__blk) {
+	bci_emit_la(__blk->addr, __blk->flags);
+}
+
 void emit_bca(struct node *__node) {
 	struct bca_blk *itr = (struct bca_blk*)vec_begin(&__node->_vec);
 	while(itr != NULL) {
@@ -963,6 +974,9 @@ void emit_bca(struct node *__node) {
 			case BCA_DR:
 				emit_bca_dr(itr);
 			break;
+			case BCA_LA:
+				emit_bca_la(itr);
+			break;
 		}
 		vec_itr((void**)&itr, VEC_ITR_DOWN, 1);
 	}
@@ -994,7 +1008,7 @@ void emit_expr(struct node *__node) {
 			emit_decl(__node);
 		break;
 		case AST_EXIT:
-			emit_exit();
+			emit_exit(get_child(__node, 0));
 		break;
 		case AST_FUNC:
 			emit_func(__node);

@@ -352,7 +352,7 @@ mdl_u8_t maybe_keyword(struct token *__tok) {
 		to_keyword(__tok, K_ELSE);
 	else if (is_ident(__tok, "typedef", 0))
 		to_keyword(__tok, K_TYPEDEF);
-	else if (is_ident(__tok, "bca", 0))
+	else if (is_ident(__tok, "_bca", 0))
 		to_keyword(__tok,  K_BCA);
 	else if (is_ident(__tok, "sizeof", 0))
 		to_keyword(__tok,  K_SIZEOF);
