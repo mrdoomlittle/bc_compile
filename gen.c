@@ -218,6 +218,13 @@ void bci_emit_la(bci_addr_t __addr, mdl_u8_t __flags) {
 	bcb_emit_addr(__addr);
 }
 
+void bci_emit_getarg(bci_addr_t __buf, bci_addr_t __bc, mdl_u8_t __no) {
+	bcii_emit(_bcii_getarg, 0x0);
+	bcb_emit_addr(__buf);
+	bcb_emit_addr(__bc);
+	bcb_emit_8l(__no);
+}
+
 bci_addr_t static stack_addr = 0, base_addr = 0;
 # define incr_stack_addr(__bc) stack_addr+=__bc;
 # define decr_stack_addr(__bc) stack_addr-=__bc;
@@ -771,6 +778,32 @@ void emit_print(struct node *__node) {
 	bci_emit_print(IS_SIGNED(arg->_type->flags)? (bcit|_bcit_msigned):bcit, get_rga_addr(bcit));
 }
 
+void emit_getarg(struct node *__node) {
+	struct node **args = (struct node**)vec_first(&__node->args);
+	struct node *buf = *args;
+	vec_itr((void**)&args, VEC_ITR_DOWN, 1);
+	struct node *bc = *args;
+	vec_itr((void**)&args, VEC_ITR_DOWN, 1);
+	struct node *no = *args;
+
+	mdl_u8_t buf_bcit = buf->_type->bcit;
+	mdl_u8_t bc_bcit = bc->_type->bcit;
+	mdl_u8_t no_bcit = no->_type->bcit;
+
+	emit_expr(buf);
+	stack_push(buf_bcit);
+	emit_expr(bc);
+	stack_push(bc_bcit);
+	emit_expr(no);
+
+	bci_emit_mov(no_bcit, get_rgc_addr(no_bcit), get_rga_addr(no_bcit), 0);
+	stack_pop(bc_bcit);
+	bci_emit_mov(bc_bcit, get_rgb_addr(bc_bcit), get_rga_addr(bc_bcit), 0);
+	stack_pop(buf_bcit);
+
+	bci_emit_getarg(get_rga_addr(buf_bcit), get_rgb_addr(bc_bcit), get_rgc_addr(no_bcit));
+}
+
 void emit_extern_call(struct node *__node) {
 	struct node **args = (struct node**)vec_first(&__node->args);
 
@@ -986,6 +1019,9 @@ void emit_expr(struct node *__node) {
 	if (!__node) return;
 	printf("gen: node_kind: %s\n", node_kind_as_str(__node->kind));
 	switch(__node->kind) {
+		case AST_GET_ARG:
+			emit_getarg(__node);
+		break;
 		case OP_INCR: case OP_DECR:
 			emit_incr_or_decr(__node, 0);
 		break;

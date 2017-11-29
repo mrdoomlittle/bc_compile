@@ -925,6 +925,9 @@ void read_func_call(struct node **__node, struct node *__func) {
 	} else if (!strcmp((char*)__func->p, "extern_call")) {
 		ast_func_call(__node, __func->_type->ret_type, NULL, NULL, args);
 		(*__node)->kind = AST_EXTERN_CALL;
+	} else if (!strcmp((char*)__func->p, "_get_arg")) {
+		ast_func_call(__node, NULL, NULL, NULL, args);
+		(*__node)->kind = AST_GET_ARG;
 	} else {
 		ast_goto(&_goto, (void*)__func->p);
 		if (vec_blk_c(&__func->params) > 0 && vec_blk_c(&args) > 0) {
@@ -1236,6 +1239,9 @@ void read_var_or_func(struct node **__node, char *__name) {
 		struct type *_type;
 		make_func_type(&_type, type_8l_u, (struct vec){}, 0);
 		ast_func(__node, __name, _type, NULL, (struct vec){}, NULL);
+		return;
+	} else if (!strcmp(__name, "_get_arg")) {
+		ast_func(__node, __name, NULL, NULL, (struct vec){}, NULL);
 		return;
 	}
 

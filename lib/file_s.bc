@@ -1,0 +1,6 @@
+struct file {
+	u8_t *path;
+	u16_t off;
+	u8_t *buf;
+	u16_t bc;
+};

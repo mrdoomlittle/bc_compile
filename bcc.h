@@ -154,7 +154,8 @@ enum {
 	AST_BCA,
 	AST_VA_PTR,
 	AST_OP_GT,
-	AST_OP_LT
+	AST_OP_LT,
+	AST_GET_ARG
 };
 
 # define BCC_SUCCESS 0
