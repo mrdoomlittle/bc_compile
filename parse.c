@@ -36,7 +36,7 @@ struct bca_blk bca_blk_buff[200];
 struct bca_blk *bca_blk_itr = bca_blk_buff;
 
 void bca_var(struct bca_blk *__blk, char *__name, mdl_uint_t __val) {
-	*__blk = (struct bca_blk){.kind=BCA_VAR, .name=__name, .val = __val};
+	*__blk = (struct bca_blk){.kind=BCA_VAR, .name=__name, .val=__val};
 }
 
 void bca_print(struct bca_blk *__blk, mdl_u8_t __bcit, bci_addr_t __addr, mdl_u8_t __flags) {
@@ -81,6 +81,10 @@ void bca_dr(struct bca_blk *__blk, mdl_u8_t __bcit, bci_addr_t __dst_addr, bci_a
 
 void bca_la(struct bca_blk *__blk, bci_addr_t __addr, mdl_u8_t __flags) {
 	*__blk = (struct bca_blk){.kind=BCA_LA, .addr=__addr, .flags=__flags};
+}
+
+void bca_ula(struct bca_blk *__blk, bci_addr_t __addr, bci_addr_t __arg, mdl_u8_t __flags) {
+	*__blk = (struct bca_blk){.kind=BCA_ULA, .addr=__addr, .arg=__arg, .flags=__flags};
 }
 
 void bca_env_add_var_int(char *__name, mdl_uint_t __val) {
@@ -704,6 +708,13 @@ void bca_read_la(struct bca_blk *__blk, char **__itr) {
 	bca_la(__blk, addr, flags);
 }
 
+void bca_read_ula(struct bca_blk *__blk, char **__itr) {
+	bci_addr_t addr = bca_read_literal(__itr);
+	bci_addr_t arg = bca_read_literal(__itr);
+	mdl_u8_t flags = bca_read_literal(__itr);
+	bca_ula(__blk, addr, arg, flags);
+}
+
 struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 	struct vec _vec;
 	vec_init(&_vec);
@@ -744,6 +755,8 @@ struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 			bca_read_dr(blk, &itr);
 		else if (!strcmp((char*)tok->p, "la"))
 			bca_read_la(blk, &itr);
+		else if (!strcmp((char*)tok->p, "ula"))
+			bca_read_ula(blk, &itr);
 		else {
 			//error
 			itr++;
@@ -925,9 +938,9 @@ void read_func_call(struct node **__node, struct node *__func) {
 	} else if (!strcmp((char*)__func->p, "extern_call")) {
 		ast_func_call(__node, __func->_type->ret_type, NULL, NULL, args);
 		(*__node)->kind = AST_EXTERN_CALL;
-	} else if (!strcmp((char*)__func->p, "_get_arg")) {
+	} else if (!strcmp((char*)__func->p, "_getarg")) {
 		ast_func_call(__node, NULL, NULL, NULL, args);
-		(*__node)->kind = AST_GET_ARG;
+		(*__node)->kind = AST_GETARG;
 	} else {
 		ast_goto(&_goto, (void*)__func->p);
 		if (vec_blk_c(&__func->params) > 0 && vec_blk_c(&args) > 0) {
@@ -1231,7 +1244,6 @@ mdl_uint_t read_int_expr() {
 
 void read_var_or_func(struct node **__node, char *__name) {
 	struct node *node = NULL;
-
 	if (!strcmp(__name, "_print")) {
 		ast_func(__node, __name, NULL, NULL, (struct vec){}, NULL);
 		return;
@@ -1240,13 +1252,12 @@ void read_var_or_func(struct node **__node, char *__name) {
 		make_func_type(&_type, type_8l_u, (struct vec){}, 0);
 		ast_func(__node, __name, _type, NULL, (struct vec){}, NULL);
 		return;
-	} else if (!strcmp(__name, "_get_arg")) {
+	} else if (!strcmp(__name, "_getarg")) {
 		ast_func(__node, __name, NULL, NULL, (struct vec){}, NULL);
 		return;
 	}
 
 	node = env_lookup(__name);
-
 	if (node == NULL)
 		fprintf(stderr, "failed to get var. error !!!!!!!!!!!!!!!!! -- %s\n", __name);
 	*__node = node;
@@ -1374,7 +1385,8 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 		ast_var(&var, _type, name);
 
 		map_put(__is_local? local_env:&global_env, (mdl_u8_t*)name, strlen(name), var);
-		bca_env_add_var_int(name, RG_16A);
+		if (bca)
+			bca_env_add_var_int(name, RG_16A);
 
 		printf("name ----- %s\n", name);
 
@@ -1393,7 +1405,6 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 
 	return BCC_SUCCESS;
 }
-
 
 bcc_err_t read_exit_stmt(struct token *__tok, struct node **__node) {
 	struct node *exit_status;

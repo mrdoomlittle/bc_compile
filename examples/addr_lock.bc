@@ -1,0 +1,18 @@
+u8_t data = 212;
+
+_bca("fld rg_16a data");
+// lock address
+_bca("la rg_16a 0x0");
+
+_print(data); // out: 255
+
+u8_t a = 212;
+u8_t *arg = &a;
+_bca("fld rg_16b arg");
+_bca("dr bcit_16l rg_16c rg_16b 0x0");
+// unlock address
+_bca("fld rg_16a data");
+_bca("ula rg_16a rg_16c 0x0");
+
+_print(data);
+_exit 0x0;

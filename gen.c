@@ -218,11 +218,17 @@ void bci_emit_la(bci_addr_t __addr, mdl_u8_t __flags) {
 	bcb_emit_addr(__addr);
 }
 
-void bci_emit_getarg(bci_addr_t __buf, bci_addr_t __bc, mdl_u8_t __no) {
+void bci_emit_getarg(bci_addr_t __buf, bci_addr_t __bc, bci_addr_t __no) {
 	bcii_emit(_bcii_getarg, 0x0);
 	bcb_emit_addr(__buf);
 	bcb_emit_addr(__bc);
-	bcb_emit_8l(__no);
+	bcb_emit_addr(__no);
+}
+
+void bci_emit_ula(bci_addr_t __addr, bci_addr_t __arg, mdl_u8_t __flags) {
+	bcii_emit(_bcii_ula, __flags);
+	bcb_emit_addr(__addr);
+	bcb_emit_addr(__arg);
 }
 
 bci_addr_t static stack_addr = 0, base_addr = 0;
@@ -969,6 +975,10 @@ void emit_bca_la(struct bca_blk *__blk) {
 	bci_emit_la(__blk->addr, __blk->flags);
 }
 
+void emit_bca_ula(struct bca_blk *__blk) {
+	bci_emit_ula(__blk->addr, __blk->arg, __blk->flags);
+}
+
 void emit_bca(struct node *__node) {
 	struct bca_blk *itr = (struct bca_blk*)vec_begin(&__node->_vec);
 	while(itr != NULL) {
@@ -1010,6 +1020,9 @@ void emit_bca(struct node *__node) {
 			case BCA_LA:
 				emit_bca_la(itr);
 			break;
+			case BCA_ULA:
+				emit_bca_ula(itr);
+			break;
 		}
 		vec_itr((void**)&itr, VEC_ITR_DOWN, 1);
 	}
@@ -1019,7 +1032,7 @@ void emit_expr(struct node *__node) {
 	if (!__node) return;
 	printf("gen: node_kind: %s\n", node_kind_as_str(__node->kind));
 	switch(__node->kind) {
-		case AST_GET_ARG:
+		case AST_GETARG:
 			emit_getarg(__node);
 		break;
 		case OP_INCR: case OP_DECR:

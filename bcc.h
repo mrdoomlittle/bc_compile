@@ -114,7 +114,8 @@ enum {
 	BCA_FLD,
 	BCA_FST,
 	BCA_DR,
-	BCA_LA
+	BCA_LA,
+	BCA_ULA
 };
 
 enum {
@@ -155,7 +156,7 @@ enum {
 	AST_VA_PTR,
 	AST_OP_GT,
 	AST_OP_LT,
-	AST_GET_ARG
+	AST_GETARG
 };
 
 # define BCC_SUCCESS 0
@@ -277,6 +278,7 @@ struct bca_blk {
 	mdl_u8_t kind, bcit, flags;
 	mdl_u8_t dst_bcit, src_bcit;
 	bci_addr_t addr, dst_addr, src_addr;
+	bci_addr_t arg;
 	mdl_uint_t val, bc;
 	char *name;
 	bci_addr_t b_addr, e_addr;

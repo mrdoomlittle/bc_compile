@@ -317,13 +317,25 @@ void read_typedef() {
 	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
+mdl_u8_t is_len(char *__s, mdl_uint_t __l) {
+	mdl_uint_t l = 0;
+	while(*__s != '\0') {
+		if (l == __l) return 1;
+		if (l > __l) return 0;
+		l++;
+	}
+	return 0;
+}
+
 mdl_u8_t maybe_keyword(struct token *__tok) {
 	if (__tok->kind != TOK_IDENT) return 1;
-	if (*(mdl_u32_t*)__tok->p == 0x5F616362) {
-		__tok->p = (void*)((mdl_u8_t*)__tok->p+sizeof(mdl_u32_t));
-		if (!maybe_keyword(__tok)) return 0;
-		__tok->bca = 1;
-		return 1;
+	if (is_len((char*)__tok->p, 4)) {
+		if (*(mdl_u32_t*)__tok->p == 0x5F616362) {
+			__tok->p = (void*)((mdl_u8_t*)__tok->p+sizeof(mdl_u32_t));
+			if (!maybe_keyword(__tok)) return 0;
+			__tok->bca = 1;
+			return 1;
+		}
 	}
 
 	if (is_ident(__tok, "if", 0))
