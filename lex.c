@@ -52,10 +52,10 @@ void static make_chr(struct token *__tok, char *__chr) {
 	build_token(__tok, &(struct token){.kind=TOK_CHR, .p=(void*)__chr});}
 
 void static make_keyword(struct token *__tok, mdl_u8_t __id) {
-	build_token(__tok, &(struct token){.kind=TOK_KEYWORD, .id=__id});}
+	build_token(__tok, &(struct token){.kind=TOK_KEYWORD, .id=__id, .p=NULL});}
 
 void static make_invalid(struct token *__tok) {
-	build_token(__tok, &(struct token){.kind=TOK_INVALID});}
+	build_token(__tok, &(struct token){.kind=TOK_INVALID, .p=NULL});}
 
 void static make_ident(struct token *__tok, char *__s) {
 	build_token(__tok, &(struct token){.kind=TOK_IDENT, .p=(void*)__s});}

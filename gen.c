@@ -17,7 +17,7 @@ void bcb_emit_8l(mdl_u8_t __val) {
 
 void bcb_emit_16l(mdl_u16_t __val) {
 	bcb_emit_8l(__val);
-	bcb_emit_8l(__val >> 8);
+	bcb_emit_8l(__val>>8);
 }
 
 void bcb_emit(mdl_u8_t *__ptr, mdl_uint_t  __n) {
@@ -59,8 +59,8 @@ void bcii_emit(mdl_u8_t __iid, bci_flag_t __flags) {
 	bcb_emit_8l(__flags);
 }
 
-void bci_emit_assign(bci_addr_t __addr, mdl_u8_t **__val, mdl_u8_t __type, bci_flag_t __flags) {
-	bcii_emit(_bcii_assign, __flags);
+void bci_emit_as(bci_addr_t __addr, mdl_u8_t **__val, mdl_u8_t __type, bci_flag_t __flags) {
+	bcii_emit(_bcii_as, __flags);
 	bcb_emit_8l(__type);
 
 	bcb_emit_addr(__addr);
@@ -193,8 +193,8 @@ void bci_emit_decr(mdl_u8_t __type, bci_addr_t __addr, mdl_uint_t __by, mdl_u8_t
 	is_flag(__flags, _bcii_iod_fbc_addr)? bcb_emit_addr(__by):bcb_emit_no(__by);
 }
 
-void bci_emit_extern_call(mdl_u8_t __ret_type, bci_addr_t __ret_addr, bci_addr_t __id_addr, bci_addr_t __arg_addr) {
-	bcii_emit(_bcii_extern_call, 0);
+void bci_emit_exc(mdl_u8_t __ret_type, bci_addr_t __ret_addr, bci_addr_t __id_addr, bci_addr_t __arg_addr) {
+	bcii_emit(_bcii_exc, 0);
 	bcb_emit_8l(__ret_type);
 	bcb_emit_addr(__ret_addr);
 	bcb_emit_addr(__id_addr);
@@ -264,8 +264,8 @@ bcc_err_t gen_init(mdl_uint_t __bc_buff_size) {
 	incr_stack_addr(bcit_sizeof(_bcit_32l)*3); // 32bit registers
 	incr_stack_addr(bcit_sizeof(_bcit_64l)*3); // 64bit registers
     bcb_itr = (mdl_u8_t*)buff_begin(&bc_buff);
-	bci_emit_assign(RG_BP, (mdl_u8_t**)&bp, _bcit_addr, 0);
-	bci_emit_assign(RG_SP, (mdl_u8_t**)&sp, _bcit_addr, 0);
+	bci_emit_as(RG_BP, (mdl_u8_t**)&bp, _bcit_addr, 0);
+	bci_emit_as(RG_SP, (mdl_u8_t**)&sp, _bcit_addr, 0);
 	vec_init(&gotos);
 	map_init(&labels);
 	*bp = base_addr = stack_addr;
@@ -517,18 +517,18 @@ void emit_literal(struct node *__node) {
 		__node->off = stack_addr-base_addr;
 
 		for (mdl_u8_t *itr = (mdl_u8_t*)__node->p; itr != (mdl_u8_t*)__node->p+(__node->_type->len-1); itr++) {
-			bci_emit_assign(stack_addr, (mdl_u8_t**)&val, _bcit_8l, 0);
+			bci_emit_as(stack_addr, (mdl_u8_t**)&val, _bcit_8l, 0);
 			*val = *itr;
 			incr_stack_addr(1);
 		}
 
 		bci_addr_t *addr;
-		bci_emit_assign(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&addr, __node->_type->bcit, 0);
+		bci_emit_as(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&addr, __node->_type->bcit, 0);
 		*addr = base_addr+__node->off;
 		return;
 	}
 
-	bci_emit_assign(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&val, __node->_type->bcit, 0);
+	bci_emit_as(get_rga_addr(__node->_type->bcit), (mdl_u8_t**)&val, __node->_type->bcit, 0);
 	if (IS_SIGNED(__node->_type->flags)) {
 		switch(__node->_type->bcit) {
 			case _bcit_8l: *(mdl_u8_t*)__node->val = *(mdl_i8_t*)__node->val;
@@ -599,7 +599,7 @@ void emit_load(mdl_u8_t __kind, mdl_u8_t __bcit, bci_addr_t __src_off) {
 	bci_emit_aop(_bci_aop_add, _bcit_addr, &l_addr, &__src_off, get_rgb_addr(_bcit_addr), _bcii_aop_fr_pm);
 	if (__kind == T_KIND_ARRAY) {
 		bci_addr_t *val;
-		bci_emit_assign(get_rga_addr(__bcit), (mdl_u8_t**)&val, _bcit_addr, 0);
+		bci_emit_as(get_rga_addr(__bcit), (mdl_u8_t**)&val, _bcit_addr, 0);
 		*val = base_addr+__src_off;
 	} else
 		bci_emit_mov(__bcit, get_rga_addr(__bcit), get_rgb_addr(_bcit_addr), _bcii_mov_fdr_sa);
@@ -616,7 +616,7 @@ void emit_if(struct node *__node) {
 	emit_expr(cond);
 
 	bci_addr_t *jmp_addr;
-	bci_emit_assign(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
+	bci_emit_as(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
 	bci_addr_t jmpm_addr = RG_16B;
 
 	stack_pop(_bcit_8l);
@@ -635,7 +635,7 @@ void emit_if(struct node *__node) {
 	emit_expr(*(__node->child_buff+1));
 
 	bci_addr_t *eljmp_addr;
-	bci_emit_assign(jmpm_addr, (mdl_u8_t**)&eljmp_addr, _bcit_addr, 0);
+	bci_emit_as(jmpm_addr, (mdl_u8_t**)&eljmp_addr, _bcit_addr, 0);
 	bci_emit_jmp(jmpm_addr);
 
 	*jmp_addr = bcb_itr-(mdl_u8_t*)buff_begin(&bc_buff);
@@ -651,7 +651,7 @@ void emit_while(struct node *__node) {
 	emit_if(*__node->child_buff);
 
 	bci_addr_t *jmp_addr;
-    bci_emit_assign(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
+    bci_emit_as(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
     bci_emit_jmp(RG_16B);
 	*jmp_addr = _jmp_addr;
 
@@ -671,7 +671,7 @@ void emit_goto(struct node *__node) {
 	goto_t *_goto;
 	vec_push(&gotos, (void**)&_goto, sizeof(goto_t));
 
-	bci_emit_assign(RG_16B, (mdl_u8_t**)&_goto->jmp_addr, _bcit_addr, 0);
+	bci_emit_as(RG_16B, (mdl_u8_t**)&_goto->jmp_addr, _bcit_addr, 0);
 	bci_emit_jmp(RG_16B);
 	_goto->name = __node->p;
 	printf("goto %s;\n", (char*)__node->p);
@@ -684,7 +684,7 @@ void emit_compound_stmt(struct node *__node) {
 
 void emit_func(struct node *__node) {
 	bci_addr_t *jmp_addr;
-	bci_emit_assign(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
+	bci_emit_as(RG_16B, (mdl_u8_t**)&jmp_addr, _bcit_addr, 0);
 	bci_emit_jmp(RG_16B);
 
 //	__node->off = get_rga_addr(__node->_type->bcit);
@@ -719,13 +719,13 @@ void emit_func_call(struct node *__node) {
 	struct node *func = get_child(__node, 0);
 
 	bci_addr_t *rjmp_addr;
-	bci_emit_assign(get_rga_addr(_bcit_addr), (mdl_u8_t**)&rjmp_addr, _bcit_addr, 0);
+	bci_emit_as(get_rga_addr(_bcit_addr), (mdl_u8_t**)&rjmp_addr, _bcit_addr, 0);
 	stack_push(_bcit_addr);
 
 	mdl_u8_t hva = func->_type->hva;
 	bci_addr_t *va_addr;
 	if (hva) {
-		bci_emit_assign(get_rga_addr(_bcit_addr), (mdl_u8_t**)&va_addr, _bcit_addr, 0);
+		bci_emit_as(get_rga_addr(_bcit_addr), (mdl_u8_t**)&va_addr, _bcit_addr, 0);
 		stack_push(_bcit_addr);
 	}
 
@@ -758,7 +758,7 @@ void emit_func_call(struct node *__node) {
 		while(itr != NULL) {
 			mdl_u8_t bcit = (*itr)->_type->bcit;
 			mdl_u64_t *val;
-			bci_emit_assign(addr, (mdl_u8_t**)&val, _bcit_64l, 0);
+			bci_emit_as(addr, (mdl_u8_t**)&val, _bcit_64l, 0);
 			*val = 0;
 
 			emit_expr(*itr);
@@ -826,13 +826,13 @@ void emit_extern_call(struct node *__node) {
 	stack_pop(_bcit_8l);
 
 	mdl_u8_t bcit = __node->_type->bcit;
-	bci_emit_extern_call(bcit, get_rga_addr(bcit), get_rga_addr(_bcit_8l), get_rgb_addr(arg_bcit));
+	bci_emit_exc(bcit, get_rga_addr(bcit), get_rga_addr(_bcit_8l), get_rgb_addr(arg_bcit));
 }
 
 void emit_addrof(struct node *__node) {
 	bci_addr_t *addr;
 	mdl_u8_t bcit = __node->_type->bcit;
-	bci_emit_assign(get_rga_addr(bcit), (mdl_u8_t**)&addr, bcit, 0);
+	bci_emit_as(get_rga_addr(bcit), (mdl_u8_t**)&addr, bcit, 0);
 	*addr = base_addr+get_child(__node, 0)->off;
 }
 
@@ -922,10 +922,10 @@ void emit_bca_mov(struct bca_blk *__blk) {
 	bci_emit_mov(__blk->bcit, __blk->dst_addr, __blk->src_addr, __blk->flags);
 }
 
-void emit_bca_assign(struct bca_blk *__blk) {
+void emit_bca_as(struct bca_blk *__blk) {
 	mdl_u8_t *val, bcit = __blk->bcit;
 	if ((bcit&_bcit_msigned) == _bcit_msigned) bcit ^= _bcit_msigned;
-	bci_emit_assign(__blk->addr, &val, __blk->bcit, __blk->flags);
+	bci_emit_as(__blk->addr, &val, __blk->bcit, __blk->flags);
 
 	if (bcit == _bcit_8l)
 		*val = __blk->val;
@@ -959,7 +959,7 @@ void emit_bca_eeb_put(struct bca_blk *__blk) {
 
 void emit_bca_fld(struct bca_blk *__blk) {
 	bci_addr_t *addr;
-	bci_emit_assign(__blk->addr, (mdl_u8_t**)&addr, _bcit_addr, 0);
+	bci_emit_as(__blk->addr, (mdl_u8_t**)&addr, _bcit_addr, 0);
 	*addr = base_addr+*(bci_addr_t*)__blk->p;
 }
 
@@ -990,8 +990,8 @@ void emit_bca(struct node *__node) {
 			case BCA_MOV:
 				emit_bca_mov(itr);
 			break;
-			case BCA_ASSIGN:
-				emit_bca_assign(itr);
+			case BCA_AS:
+				emit_bca_as(itr);
 			break;
 			case BCA_NOP:
 				emit_bca_nop(itr);

@@ -1,6 +1,11 @@
-u8_t x = 0;
-while(x != 20) {
-	_print(x);
-	x++;
-}
-_exit;
+//while(x != 20) {
+//	_print(x);
+//	x++;
+//}
+
+
+hello:
+
+//j
+//_exit;
+u8_t x;

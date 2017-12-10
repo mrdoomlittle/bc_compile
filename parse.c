@@ -47,8 +47,8 @@ void bca_mov(struct bca_blk *__blk, mdl_u8_t __bcit, bci_addr_t __dst_addr, bci_
 	*__blk = (struct bca_blk){.kind=BCA_MOV, .flags=__flags, .bcit=__bcit, .dst_addr=__dst_addr, .src_addr=__src_addr};
 }
 
-void bca_assign(struct bca_blk *__blk, bci_addr_t __addr, mdl_uint_t __val, mdl_u8_t __bcit, mdl_u8_t __flags) {
-	*__blk = (struct bca_blk){.kind=BCA_ASSIGN, .flags=__flags, .addr=__addr, .val=__val, .bcit=__bcit};
+void bca_as(struct bca_blk *__blk, bci_addr_t __addr, mdl_uint_t __val, mdl_u8_t __bcit, mdl_u8_t __flags) {
+	*__blk = (struct bca_blk){.kind=BCA_AS, .flags=__flags, .addr=__addr, .val=__val, .bcit=__bcit};
 }
 
 void bca_nop(struct bca_blk *__blk, mdl_u8_t __flags) {
@@ -559,25 +559,7 @@ void read_while_stmt(struct node **__node) {
 void read_label(struct node **__node, struct token *__tok) {
 	char *label = (char*)__tok->p;
 	printf("lable found. %s\n", label);
-
-	struct vec vec;
-	vec_init(&vec);
-
-	struct node *_label = NULL;
-	ast_label(&_label, label);
-
-	struct node **node = NULL;
-
-	struct node *stmt = NULL;
-	read_stmt(&stmt);
-
-	vec_push(&vec, (void**)&node, sizeof(struct node*));
-	*node = _label;
-
-	vec_push(&vec, (void**)&node, sizeof(struct node*));
-	*node = stmt;
-
-	ast_compound_stmt(__node, vec);
+	ast_label(__node, label);
 }
 
 void read_goto_stmt(struct node **__node) {
@@ -589,8 +571,6 @@ void read_goto_stmt(struct node **__node) {
 
 	char *label = (char*)tok->p;
 	ast_goto(__node, label);
-
-	expect_token(TOK_KEYWORD, SEMICOLON);
 }
 
 void read_return_stmt(struct node **__node) {
@@ -639,13 +619,13 @@ void bca_read_mov(struct bca_blk *__blk, char **__itr) {
 	bca_mov(__blk, bcit, dst_addr, src_addr, flags);
 }
 
-void bca_read_assign(struct bca_blk *__blk, char **__itr) {
+void bca_read_as(struct bca_blk *__blk, char **__itr) {
 	bci_addr_t addr = bca_read_literal(__itr);
 	mdl_uint_t val = bca_read_literal(__itr);
 	mdl_u8_t bcit = bca_read_literal(__itr);
 	mdl_u8_t flags = bca_read_literal(__itr);
 
-	bca_assign(__blk, addr, val, bcit, flags);
+	bca_as(__blk, addr, val, bcit, flags);
 }
 
 void bca_read_nop(struct bca_blk *__blk, char **__itr) {
@@ -735,8 +715,8 @@ struct vec read_bca(char *__bca, mdl_uint_t __cc) {
 			bca_read_print(blk, &itr);
 		else if (!strcmp((char*)tok->p, "mov"))
 			bca_read_mov(blk, &itr);
-		else if (!strcmp((char*)tok->p, "assign"))
-			bca_read_assign(blk, &itr);
+		else if (!strcmp((char*)tok->p, "as"))
+			bca_read_as(blk, &itr);
 		else if (!strcmp((char*)tok->p, "nop"))
 			bca_read_nop(blk, &itr);
 		else if (!strcmp((char*)tok->p, "incr"))
@@ -1402,7 +1382,6 @@ bcc_err_t read_decl(struct vec *__vec, mdl_u8_t __is_local) {
 		expect_token(TOK_KEYWORD, SEMICOLON);
 		break;
 	}
-
 	return BCC_SUCCESS;
 }
 

@@ -22,11 +22,11 @@ void print_padding(mdl_uint_t __amount) {
 
 void print_token(struct token *__tok) {
 	if (__tok == NULL) return;
-
 	debug_print("token info:\n");
 	debug_print("	kind: %s\n", token_kind_as_str(__tok->kind));
 	debug_print("	id: %s\n", token_id_as_str(__tok->id));
-	debug_print("	val: %s\n", (char*)__tok->p);
+	if (__tok->kind != TOK_CHR)
+		debug_print("	val: %s\n", (char*)__tok->p);
 }
 
 mdl_u8_t trunk = 0;
